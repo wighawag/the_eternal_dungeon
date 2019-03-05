@@ -7,7 +7,7 @@ typedef Exits = {
 	var south:Bool;
 }
 
-typedef Room = {
+typedef RoomData = {
 	var isCorridor: Bool;
 	var x: Int;
 	var y: Int;

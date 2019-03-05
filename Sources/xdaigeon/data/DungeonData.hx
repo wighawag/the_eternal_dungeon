@@ -1,7 +1,9 @@
 package xdaigeon.data;
 
-class Dungeon {
-	public static function generateRoom(x : Int, y : Int) : Room {
+import base.Stream;
+
+class DungeonData {
+	public static function generateRoom(x : Int, y : Int) : RoomData {
 		return {
 			isCorridor: false,//Math.random,
 			x: x,
@@ -15,7 +17,7 @@ class Dungeon {
 		};
 	}
 
-	public static inline function idOfRoom(room : Room) : String {
+	public static inline function idOfRoom(room : RoomData) : String {
 		return idOfLocation(room.x, room.y);
 	}
 
@@ -23,16 +25,19 @@ class Dungeon {
 		return "" + x + "," + y;
 	}
 
-	public var rooms = new Map<String,Room>();
+	public var rooms = new Map<String,RoomData>();
 	public function new() {
 
 	}
 
-	public function addRoom(room: Room) {
+	public var roomAdded : Stream<RoomData> = new Stream<RoomData>();
+
+	public function addRoom(room: RoomData) {
 		rooms[idOfRoom(room)] = room;
+		roomAdded.propagate(room);
 	}
 
-	public function getRoomsAround(x: Int, y: Int, radius: Int) : Array<Room> { // sorted in reverse y order
+	public function getRoomsAround(x: Int, y: Int, radius: Int) : Array<RoomData> { // sorted in reverse y order
 		// TODO 
 		return [{
 			isCorridor: false,
@@ -46,6 +51,5 @@ class Dungeon {
 			}
 		}];
 	}
-	
 
 }
