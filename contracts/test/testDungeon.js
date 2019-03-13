@@ -5,7 +5,7 @@ const BN = require('bn.js');
 const Dungeon = require('../dungeon.js')
 
 const rocketh = require('rocketh');
-const {web3, getDeployedContract} = require('rocketh-web3')(rocketh, require('Web3'));
+const {getDeployedContract} = require('rocketh-web3')(rocketh, require('Web3'));
 
 const {users, dungeonOwner} = rocketh.namedAccounts;
 
@@ -20,7 +20,7 @@ tap.test('Dungeon', async(t) => {
     let dungeon;
     t.beforeEach(async() => {
         const deployments = await rocketh.runStages();
-        dungeon = new Dungeon(users[0], deployments.Dungeon.address, deployments.Dungeon.contractInfo.abi);
+        dungeon = new Dungeon(rocketh.ethereum, users[0], deployments.Dungeon.address, deployments.Dungeon.contractInfo.abi);
         await dungeon.start(dungeonOwner);
     });
 

@@ -1,16 +1,26 @@
 const BN = require('bn.js');
-const {
-    instantiateContract,
-    tx,
-    call,
-    getPastEvents,
-    getBlock,
-    soliditySha3,
-} = require('./utils');
 
+let utils;
+let 
+instantiateContract,
+tx,
+call,
+getPastEvents,
+getBlock,
+soliditySha3;
 const gas = 4000000; // TODO per method
 
-const Dungeon = function(user, address, abi) {
+const Dungeon = function(provider, user, address, abi) {
+
+    // INITIALISE utils
+    utils = require('./utils')(provider);
+    instantiateContract = utils.instantiateContract;
+    tx = utils.tx;
+    call = utils.call;
+    getPastEvents = utils.getPastEvents;
+    getBlock = utils.getBlock;
+    soliditySha3 = utils.soliditySha3;
+
     this.user = user;
     this.contract = instantiateContract(address, abi);
 }
