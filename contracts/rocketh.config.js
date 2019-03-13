@@ -2,6 +2,7 @@
 module.exports = {
     namedAccounts: {
         deployer: 0,
-        others: "from:1"
+        dungeonOwner: 1,
+        users: "from:2"
     }
 }

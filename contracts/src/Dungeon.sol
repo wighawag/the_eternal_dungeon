@@ -31,26 +31,36 @@ contract Dungeon {
 
     mapping(uint256 => Room) rooms;
 
-    constructor() public {
+    address owner;
+    constructor(address _owner) public {
+        owner = _owner;
+    }
+
+    function start(uint256 blockNumber, bytes32 blockHash) external {
+        require(msg.sender == owner, "only owner alllowed to start");
+        Room storage room = rooms[0];
+        require(room.kind == 0, "dungeon already started");
+
+        require(blockHash == actualiseBlock(blockNumber), "blockHash do not match");
         rooms[0] = Room({
-            blockNumber:block.number-1,
+            blockNumber:blockNumber,
             exits:0,
             kind:0
         });
         emit RoomDiscovered(0, block.number -1);
-        actualiseBlock(block.number-1);
         actualiseRoom(0);
     }
 
-    function actualiseBlock(uint256 blockNumber) public {
+    function actualiseBlock(uint256 blockNumber) public returns(bytes32) {
         if(blockNumber > 0 && blockNumber < block.number) {
             bytes32 blockHash = blockhash(blockNumber);
             if(uint256(blockHash) == 0) { // LAST RESORT // CHANGE THE EXPECT ROOM
                 blockHash = blockhash(block.number - 1); // TODO module 256
-                // does not need to save it on storage since room to actualise in the same block will be able to pickup the same value
             }
             blockHashes[blockNumber] = blockHash;
+            return blockHash;
         }
+        return bytes32(0);
     }
 
     function actualiseRoom(uint256 location) public {
@@ -93,7 +103,7 @@ contract Dungeon {
         uint256 newLocation = y * 2**128 + x;
         Room storage nextRoom = rooms[newLocation];
         // TODO check if can move (fighting, waiting become fight)
-        if( (currentRoom.exits & 2**direction) == 2**direction || (nextRoom.exits & 2**((direction +2)%3)) == 2**((direction +2)%3) ) {
+        if( (currentRoom.exits & 2**direction) == 2**direction || (nextRoom.exits & 2**((direction +2)%4)) == 2**((direction +2)%4) ) {
             player.location = newLocation;
             if(nextRoom.blockNumber == 0) {
                 nextRoom.blockNumber = block.number;
@@ -124,5 +134,5 @@ contract Dungeon {
         kind = room.kind;
         blockNumber = room.blockNumber;
     }
-
+    
 }
