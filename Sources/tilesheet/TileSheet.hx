@@ -10,7 +10,7 @@ class TileSheet {
 		this.image = image;
 		this.numTilesInWidth = Std.int(image.width / size);
 	}
-	public function drawTile(g2 : kha.graphics2.Graphics, i : Int, x: Int, y: Int) {
+	public function drawTile(g2 : kha.graphics2.Graphics, i : Int, x: Float, y: Float) {
 		var sx : Int = (i % numTilesInWidth) * size;
 		var sy : Int = Std.int(i / numTilesInWidth) * size;
 		g2.drawSubImage(image, x, y, sx, sy, size, size);

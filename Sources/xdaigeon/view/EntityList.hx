@@ -18,6 +18,7 @@ class EntityIterator {
 
     public function next() : Entity {
 		var toReturn = i;
+		i++;
 		while(i < this.entities.length && this.entities[i] == null) {
 			this.i++;
 		}

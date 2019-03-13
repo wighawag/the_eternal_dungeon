@@ -7,7 +7,7 @@ class DungeonData {
 		return {
 			isCorridor: false,//Math.random,
 			x: x,
-			y: x,
+			y: y,
 			exits: {
 				east: Math.random() > 0.5,
 				west: Math.random() > 0.5,
@@ -35,21 +35,6 @@ class DungeonData {
 	public function addRoom(room: RoomData) {
 		rooms[idOfRoom(room)] = room;
 		roomAdded.propagate(room);
-	}
-
-	public function getRoomsAround(x: Int, y: Int, radius: Int) : Array<RoomData> { // sorted in reverse y order
-		// TODO 
-		return [{
-			isCorridor: false,
-			x:x,
-			y:y,
-			exits: {
-				north: true,
-				east: false,
-				west: false,
-				south: false
-			}
-		}];
 	}
 
 }
