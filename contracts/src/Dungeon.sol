@@ -3,7 +3,7 @@ pragma solidity 0.5.5;
 contract Dungeon {
 
     event RoomDiscovered(uint256 indexed location, uint64 blockNumber, uint64 numRooms, uint32 numExits);
-    event RoomActualised(uint256 indexed location, bytes32 blockHash);
+    event RoomActualised(uint256 indexed location, bytes32 blockHash, uint8 exits, uint8 kind, uint64 numRooms, uint32 numExits); // TODO remve exits and kind and room.numRooms and room.numExits
     // event BlockActualised();
 
     // uint256 roomToActualise;
@@ -48,18 +48,15 @@ contract Dungeon {
         require(msg.sender == owner, "only owner alllowed to start");
         Room storage room = rooms[0];
         require(room.kind == 0, "dungeon already started"); // TODO allow start anywhere (with random chance of not going anywhere ?)
-
-        require(blockHash == actualiseBlock(blockNumber), "blockHash do not match");
-        uint64 numRooms = stats.numRooms++;
-        uint32 numExits = stats.numExits;
+        emit RoomDiscovered(0, blockNumber, 0, 0);
         rooms[0] = Room({
             blockNumber: blockNumber,
-            numRooms: numRooms,
-            numExits: numExits,
+            numRooms: 0,
+            numExits: 0,
             exits:0,
             kind:0
         });
-        emit RoomDiscovered(0, blockNumber, numRooms, numExits);
+        require(blockHash == actualiseBlock(blockNumber), "blockHash do not match");
         actualiseRoom(0);
     }
 
@@ -85,7 +82,8 @@ contract Dungeon {
     }
 
     event Debug(int256 target, uint256 random);
-    function generateExits(uint256 location, bytes32 blockHash, uint256 numRoomsAtDiscovery, uint256 numExitsAtDiscovery) internal /*TODO pure*/ returns(uint8, uint8) {
+    // TODO make it internal and pure
+    function generateExits(uint256 location, bytes32 blockHash, uint256 numRoomsAtDiscovery, uint256 numExitsAtDiscovery) public /*TODO pure*/ returns(uint8, uint8) {
         int256 target =  int256((2 + sqrt(numRoomsAtDiscovery)) - numExitsAtDiscovery); // strictly based on data at the point of discovery // => dungeon could stop
         if(target < -4) {
             target = -4;
@@ -123,7 +121,7 @@ contract Dungeon {
             // 3 // 6 // 9 // 12 // 5 // 10 // 
         } else if(numExits == 1){
             uint8 chosenExits = uint8(uint256(keccak256(abi.encodePacked(location, blockHash, uint8(2)))) % 4);
-            exits = 2**(chosenExits+1);
+            exits = 2**chosenExits;
         }
         return (exits, uint8(numExits));
     }
@@ -144,23 +142,45 @@ contract Dungeon {
             room.kind = uint8(uint256(keccak256(abi.encodePacked(location, blockHash, uint8(3)))) % 2 + 1); // TODO ranomize for each access (probably making the entire 256 bit to a 256 bit state)
             room.exits = exits;
             
-            emit RoomActualised(location, blockHash);
+            emit RoomActualised(location, blockHash, exits, room.kind, room.numRooms, room.numExits);
             uint8 closedExits = 0;
-            if((exits & 2) == 2 || (rooms[location+1].exits & 8) == 8) { // east
-                closedExits ++;
+            if(rooms[location+1].kind > 0) {
+                if((exits & 2) == 2) {
+                    closedExits ++;
+                }
+                if((rooms[location+1].exits & 8) == 8) { // east
+                    closedExits ++;
+                }
             }
-            if((exits & 8) == 8 || (rooms[location-1].exits & 2) == 2) { // west
-                closedExits ++;
+            if(rooms[location+1].kind > 0) {
+                if((exits & 8) == 8) {
+                    closedExits ++;
+                }
+                if((rooms[location+1].exits & 2) == 2) { // west
+                    closedExits ++;
+                }
             }
             uint256 y = location/(2**128);
             uint128 x = uint128(location);
-            if((exits & 1) == 1 || ( rooms[(y-1)*(2**128)+x].exits & 4) == 4) { // north
-                closedExits ++;
+            if(rooms[(y-1)*(2**128)+x].kind > 0) {
+                if((exits & 1) == 1) {
+                    closedExits ++;
+                }
+                if((rooms[(y-1)*(2**128)+x].exits & 4) == 4) { // north
+                    closedExits ++;
+                }
             }
-            if((exits & 4) == 4 || ( rooms[(y+1)*(2**128)+x].exits & 1) == 1) { // south
-                closedExits ++;
+            if(rooms[(y+1)*(2**128)+x].kind > 0) {
+                if((exits & 1) == 1) {
+                    closedExits ++;
+                }
+                if((rooms[(y+1)*(2**128)+x].exits & 4) == 4) { // south
+                    closedExits ++;
+                }
             }
-            stats.numExits += numExits - closedExits;
+            stats.numExits += numExits;
+            stats.numExits -= closedExits;
+            stats.numRooms++;
         }
     }
 
@@ -189,15 +209,11 @@ contract Dungeon {
         if( (currentRoom.exits & 2**direction) == 2**direction || (nextRoom.exits & 2**((direction +2)%4)) == 2**((direction +2)%4) ) {
             player.location = newLocation;
             if(nextRoom.blockNumber == 0) {
-                uint64 numRooms = stats.numRooms;
-                uint32 numExits = stats.numExits;
                 nextRoom.blockNumber = uint64(block.number);
-                stats = Stats({
-                    blockToActualise: uint64(block.number),
-                    numRooms: numRooms+1,
-                    numExits:numExits
-                });
-                emit RoomDiscovered(newLocation, uint64(block.number), numRooms, numExits);
+                nextRoom.numRooms = stats.numRooms;
+                nextRoom.numExits = stats.numExits;
+                stats.blockToActualise = uint64(block.number);
+                emit RoomDiscovered(newLocation, uint64(block.number), nextRoom.numRooms, nextRoom.numExits);
             } else {
                 stats.blockToActualise = 0;
                 actualiseRoom(newLocation);
@@ -217,11 +233,13 @@ contract Dungeon {
 
 
     /////////////////////  DEBUG GETTERS //////////////// // TODO REMOVE
-    function debug_room(uint256 location) external view returns(uint256 blockNumber, uint8 exits, uint8 kind, uint256 ){
+    function debug_room(uint256 location) external view returns(uint256 blockNumber, uint8 exits, uint8 kind, uint256, uint64 numRooms, uint32 numExits){
         Room storage room = rooms[location];
         exits = room.exits;
         kind = room.kind;
         blockNumber = room.blockNumber;
+        numRooms = room.numRooms;
+        numExits = room.numExits;
     }
     
 }

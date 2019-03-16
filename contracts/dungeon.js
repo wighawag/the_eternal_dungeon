@@ -10,11 +10,22 @@ getBlock,
 soliditySha3;
 const gas = 4000000; // TODO per method
 
-function locationAt(location, direction) {
-
+function locationAt(location, dx, dy) {
+    const dirNum = new BN(location);
+    const p128 = (new BN(2)).pow(new BN(128));
+    const p256 = (new BN(2)).pow(new BN(256));
+    const x = dirNum.mod(p128);
+    const y = dirNum.div(p128);
+    let res = y.add(new BN(dy)).mul(p128).add(x.add(new BN(dx)));
+    if(res.lt(new BN(0))) {
+        res = res.add(p256);
+    } else {
+        res = res.mod(p256);
+    }
+    return res.toString(10);
 }
 
-const Dungeon = function(provider, user, address, abi) {
+const Dungeon = function(provider, player, address, abi) {
 
     // INITIALISE utils
     utils = require('./utils')(provider);
@@ -25,7 +36,7 @@ const Dungeon = function(provider, user, address, abi) {
     getBlock = utils.getBlock;
     soliditySha3 = utils.soliditySha3;
 
-    this.user = user;
+    this.player = player;
     this.contract = instantiateContract(address, abi);
 }
 
@@ -36,7 +47,7 @@ Dungeon.prototype.start = async function(owner) {
 
 Dungeon.prototype.move = async function(direction) {
     const {blockNumber, blockHash} = await this.findHashThatGivesExitToStartingRoom();
-    return tx({from: this.user, gas}, this.contract, 'move', direction);
+    return tx({from: this.player, gas}, this.contract, 'move', direction);
 }
 
 Dungeon.prototype.getPastEvents = function(eventName, options) {
@@ -44,19 +55,31 @@ Dungeon.prototype.getPastEvents = function(eventName, options) {
 }
 
 Dungeon.prototype.fetchRoom = async function(location, options) {
+    if(!options) {
+        options = {};
+    }
+    if(typeof options.fetchNeighbours == 'undefined') {
+        options.fetchNeighbours = true;
+    }
+    
     let roomBlockHash;
     
     const discoveryEvents = await getPastEvents(this.contract, 'RoomDiscovered', {
+        fromBlock:0,
         filter:{
-            location
+            location : location.toString ? location.toString(10) : location
         }
     });
     if(discoveryEvents.length == 0) {
+        // console.log('no room at ' + location, location.toString(10));
         return null;
+    } else {
+        // console.log(' found  a room at ' + location, location.toString(10));
     }
     const actualisationEvents = await getPastEvents(this.contract, 'RoomActualised', {
+        fromBlock:0,
         filter:{
-            location
+            location : location.toString ? location.toString(10) : location
         }
     });
     const roomDiscovery = discoveryEvents[0].returnValues;
@@ -64,17 +87,18 @@ Dungeon.prototype.fetchRoom = async function(location, options) {
         const roomActualisation = actualisationEvents[0].returnValues;
         roomBlockHash = roomActualisation.blockHash;
     } else {
-        roomBlockHash = await getBlock(roomDiscovery.blockNumber);
+        roomBlockHash = (await getBlock(roomDiscovery.blockNumber)).hash;
     }
     
-    return this.getRandomRoom(location, roomBlockHash, new BN(roomDiscovery.numRooms), new BN(roomDiscovery.numExits), options);
+    // console.log({location, roomBlockHash})
+    return this.getRandomRoom(location, roomBlockHash, roomDiscovery.numRooms, roomDiscovery.numExits, options);
 }
 
-Dungeon.prototype.getRandomRoom = async function(location, hash, numRoomsAtDiscovery, numExitsAtDiscovery, options) {
+Dungeon.prototype.generateExits = function(location, hash, numRoomsAtDiscovery, numExitsAtDiscovery,) {
     var red = BN.red('k256');
     var r1 = (new BN(2)).toRed(red);
-    var r2 = numRoomsAtDiscovery.toRed(red);
-    var r3 = numExitsAtDiscovery.toRed(red);
+    var r2 = (new BN(numRoomsAtDiscovery)).toRed(red);
+    var r3 = (new BN(numExitsAtDiscovery)).toRed(red);
     var rr = r1.add(r2.redSqrt()).sub(r3);
 
     const target =  rr.fromRed(); //(new BN(2)).add(numRoomsAtDiscovery.redSqrt()).sub(numExitsAtDiscovery);
@@ -84,12 +108,12 @@ Dungeon.prototype.getRandomRoom = async function(location, hash, numRoomsAtDisco
     if(target.gt(new BN(4))) {
         target = new BN(4);
     }
-   
     const random = this.getRandomValue(location, hash, 1, 3);
     let numExits = target.sub(new BN(1)).add(random.mod(new BN(3))).toNumber();
     if(numExits < 0) {
         numExits = 0;
     }
+    // console.log('numExits', numExits);
     let exits = 0;
     if(numExits >= 4) {
         numExits = 4;
@@ -114,21 +138,82 @@ Dungeon.prototype.getRandomRoom = async function(location, hash, numRoomsAtDisco
         // 3 // 6 // 9 // 12 // 5 // 10 // 
     } else if(numExits == 1){
         const chosenExits = this.getRandomValue(location, hash, 2, 4).toNumber();
-        exits = Math.pow(2,(chosenExits+1));
+        exits = Math.pow(2,chosenExits);
     }
 
-    const kind = this.getRandomValue(location, hash, 3, 2).add(new BN(1)).toNumber();
-    
-    if(options && options.fetchNeighbours) {
-        // TODO room cache
-        // TODO const north = await this.fetchRoom(location, {fetchNeighbours: false});
-    }
-    
-    
+    // console.log({exits});
+    exitsBits = exits;
+    exits = {
+        north: (exitsBits & 1) == 1,
+        east: (exitsBits & 2) == 2,
+        south: (exitsBits & 4) == 4,
+        west: (exitsBits & 8) == 8,
+    };
+
     return {
         numExits,
         exits,
-        kind
+        exitsBits
+    }
+}
+
+Dungeon.prototype.getRandomRoom = async function(location, hash, numRoomsAtDiscovery, numExitsAtDiscovery, options) {
+    
+    let {
+        numExits,
+        exits,
+        exitsBits
+    } = this.generateExits(location, hash, numRoomsAtDiscovery, numExitsAtDiscovery);
+    // console.log({exits});
+
+    const ownExitsBits = exitsBits;
+    if(options && options.fetchNeighbours) {
+        // TODO room cache
+        // console.log('fetching neighbours');
+        const north = await this.fetchRoom(locationAt(location, 0, -1), {fetchNeighbours: false});
+        const east = await this.fetchRoom(locationAt(location, 1, 0), {fetchNeighbours: false});
+        const south = await this.fetchRoom(locationAt(location, 0, 1), {fetchNeighbours: false});
+        const west = await this.fetchRoom(locationAt(location, -1, 0), {fetchNeighbours: false});
+
+        // console.log({
+        //     north,
+        //     east,
+        //     south,
+        //     west,
+        // })
+
+        exits.north = exits.north || (north && north.exits.south);
+        exits.east = exits.east || (east && east.exits.west);
+        exits.south = exits.south || (south && south.exits.north);
+        exits.west = exits.west || (west && west.exits.east);
+
+        exitsBits = (exits.north?1:0)
+        + (exits.east?2:0)
+        + (exits.south?4:0)
+        + (exits.west?8:0); 
+
+        numExits = (exits.north?1:0)
+            + (exits.east?1:0)
+            + (exits.south?1:0)
+            + (exits.west?1:0);     
+    }
+
+    // const 
+    // const block = await getBlock(hash)
+    // const roomFromChain = await getPastEvents()
+
+    const kind = this.getRandomValue(location, hash, 3, 2).add(new BN(1)).toNumber();
+
+    // const roomFromChain = await this.contract.methods.debug_room(location).call();
+    // console.log({roomFromChain});
+    return {
+        numExits,
+        exits,
+        exitsBits,
+        kind,
+        ownExitsBits,
+        numRoomsAtDiscovery,
+        numExitsAtDiscovery,
     };
 }
 
@@ -141,11 +226,13 @@ Dungeon.prototype.getRandomValue = function(location, hash, index, mod) {
     return new BN(random.slice(2), 'hex').mod(new BN(mod));
 }
 
-Dungeon.prototype.findFirstExit = function(room) {
+Dungeon.prototype.findFirstExit = function(room, start) {
+    start = start || 0;
     for(let i = 0; i < 4; i++) {
-        const exit = Math.pow(2,i)
-        if((room.exits & exit) == exit) {
-            return i;
+        const j = (i+start) % 4;
+        const exit = Math.pow(2,j)
+        if((room.exitsBits & exit) == exit) {
+            return j;
         }
     }
     return -1;
@@ -166,7 +253,7 @@ Dungeon.prototype.findHashThatGivesExitToStartingRoom = async function() {
 }
 
 Dungeon.prototype.getPlayerLocation = function() {
-    return call(this.contract, 'getPlayer', this.user);
+    return call(this.contract, 'getPlayer', this.player);
 }
 
 module.exports = Dungeon;
