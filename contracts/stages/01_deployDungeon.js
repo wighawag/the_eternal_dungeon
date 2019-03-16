@@ -1,8 +1,6 @@
 const rocketh = require('rocketh');
 const {web3, deploy} = require('rocketh-web3')(rocketh, require('Web3'));
 
-const chainId = rocketh.chainId;
-
 const gas = 6000000;
 module.exports = async ({namedAccounts}) => {
     const {deployer, users, dungeonOwner} = namedAccounts;
@@ -13,5 +11,5 @@ module.exports = async ({namedAccounts}) => {
         }
     }
 
-    const dungeon = await deploy("Dungeon", "Dungeon", {from: deployer, gas}, dungeonOwner);
+    await deploy("Dungeon",  {from: deployer, gas}, "Dungeon", dungeonOwner);
 }

@@ -47,7 +47,7 @@ contract Dungeon {
     function start(uint64 blockNumber, bytes32 blockHash) external {
         require(msg.sender == owner, "only owner alllowed to start");
         Room storage room = rooms[0];
-        require(room.kind == 0, "dungeon already started");
+        require(room.kind == 0, "dungeon already started"); // TODO allow start anywhere (with random chance of not going anywhere ?)
 
         require(blockHash == actualiseBlock(blockNumber), "blockHash do not match");
         uint64 numRooms = stats.numRooms++;
@@ -75,13 +75,57 @@ contract Dungeon {
         return bytes32(0);
     }
 
-    function sqrt(uint x) internal pure returns (uint y) {
+    function sqrt(uint x) internal pure returns (uint y) { // compute worst case (high numnber of rooms)
         uint z = (x + 1) / 2;
         y = x;
         while (z < y) {
             y = z;
             z = (x / z + z) / 2;
         }
+    }
+
+    event Debug(int256 target, uint256 random);
+    function generateExits(uint256 location, bytes32 blockHash, uint256 numRoomsAtDiscovery, uint256 numExitsAtDiscovery) internal /*TODO pure*/ returns(uint8, uint8) {
+        int256 target =  int256((2 + sqrt(numRoomsAtDiscovery)) - numExitsAtDiscovery); // strictly based on data at the point of discovery // => dungeon could stop
+        if(target < -4) {
+            target = -4;
+        }
+        if(target > 4) {
+            target = 4;
+        }
+        uint256 random = uint256(keccak256(abi.encodePacked(location, blockHash, uint8(1))));
+        emit Debug(target, random);
+        int8 numExits = int8(target-1 + uint8(random % 3));
+        if(numExits < 0) {
+            numExits = 0;
+        }
+        uint8 exits = 0;
+        if(numExits >= 4) {
+            numExits = 4;
+            exits = 15;
+        } else if(numExits == 3){
+            uint8 chosenExits = uint8(uint256(keccak256(abi.encodePacked(location, blockHash, uint8(2)))) % 4);
+            exits = (chosenExits+1) * 7;
+            if(exits == 21) {
+                exits = 13;
+            } else if(exits == 28) {
+                exits = 11;
+            }
+            // 4 possibilities : 7 // 14 // 13 // 11
+        } else if(numExits == 2) {
+            uint8 chosenExits = uint8(uint256(keccak256(abi.encodePacked(location, blockHash, uint8(2)))) % 6);
+            exits = (chosenExits+1) * 3;
+            if(exits == 15) {
+                exits = 5;
+            } else if(exits == 18) {
+                exits = 10;
+            }
+            // 3 // 6 // 9 // 12 // 5 // 10 // 
+        } else if(numExits == 1){
+            uint8 chosenExits = uint8(uint256(keccak256(abi.encodePacked(location, blockHash, uint8(2)))) % 4);
+            exits = 2**(chosenExits+1);
+        }
+        return (exits, uint8(numExits));
     }
 
     function actualiseRoom(uint256 location) public {
@@ -95,44 +139,11 @@ contract Dungeon {
             //     // or do we simply emit an event with blockHash used ?
             // }
             require(uint256(blockHash) > 0, "block not actualised");
-            uint256 random = uint256(keccak256(abi.encodePacked(location, blockHash, uint8(1))));
-            int8 target = int8(sqrt(room.numRooms) - room.numExits); // strictly based on data at the point of discovery // => dungeon could stop
-            if(target < 0) {
-                target = 0;
-            }
-            if(target > 4) {
-                target = 4;
-            }
-            uint8 numExits = uint8(target) + uint8(random % 3);
-            uint8 exits = 0;
-            if(numExits > 4) {
-                numExits = 4;
-                exits = 15;
-            } else if(numExits == 3){
-                uint8 chosenExits = uint8(uint256(keccak256(abi.encodePacked(location, blockHash, uint8(2)))) % 4);
-                exits = (chosenExits+1) * 7;
-                if(exits == 21) {
-                    exits = 13;
-                } else if(exits == 28) {
-                    exits = 11;
-                }
-                // 4 possibilities : 7 // 14 // 13 // 11
-            } else if(numExits == 2) {
-                uint8 chosenExits = uint8(uint256(keccak256(abi.encodePacked(location, blockHash, uint8(2)))) % 6);
-                exits = (chosenExits+1) * 3;
-                if(exits == 15) {
-                    exits = 5;
-                } else if(exits == 18) {
-                    exits = 10;
-                }
-                // 3 // 6 // 9 // 12 // 5 // 10 // 
-            } else if(numExits == 1){
-                uint8 chosenExits = uint8(uint256(keccak256(abi.encodePacked(location, blockHash, uint8(2)))) % 4);
-                exits = 2**(chosenExits+1);
-            }
-
+            (uint8 exits, uint8 numExits) = generateExits(location, blockHash, room.numRooms, room.numExits);
+            
             room.kind = uint8(uint256(keccak256(abi.encodePacked(location, blockHash, uint8(3)))) % 2 + 1); // TODO ranomize for each access (probably making the entire 256 bit to a 256 bit state)
             room.exits = exits;
+            
             emit RoomActualised(location, blockHash);
             uint8 closedExits = 0;
             if((exits & 2) == 2 || (rooms[location+1].exits & 8) == 8) { // east
