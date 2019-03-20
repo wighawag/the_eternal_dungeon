@@ -41,12 +41,11 @@ const Dungeon = function(provider, player, address, abi) {
 }
 
 Dungeon.prototype.start = async function(owner) {
-    const {blockNumber, blockHash} = await this.findHashThatGivesExitToStartingRoom();
-    return tx({from: owner, gas}, this.contract, 'start', blockNumber, blockHash);
+    const latestBlock = await getBlock('latest');
+    return tx({from: owner, gas}, this.contract, 'start', latestBlock.number, latestBlock.hash);
 }
 
 Dungeon.prototype.move = async function(direction) {
-    const {blockNumber, blockHash} = await this.findHashThatGivesExitToStartingRoom();
     return tx({from: this.player, gas}, this.contract, 'move', direction);
 }
 
@@ -71,10 +70,7 @@ Dungeon.prototype.fetchRoom = async function(location, options) {
         }
     });
     if(discoveryEvents.length == 0) {
-        // console.log('no room at ' + location, location.toString(10));
         return null;
-    } else {
-        // console.log(' found  a room at ' + location, location.toString(10));
     }
     const actualisationEvents = await getPastEvents(this.contract, 'RoomActualised', {
         fromBlock:0,
@@ -90,8 +86,7 @@ Dungeon.prototype.fetchRoom = async function(location, options) {
         roomBlockHash = (await getBlock(roomDiscovery.blockNumber)).hash;
     }
     
-    // console.log({location, roomBlockHash})
-    return this.getRandomRoom(location, roomBlockHash, roomDiscovery.numRooms, roomDiscovery.numExits, options);
+    return this.computeRoom(location, roomBlockHash, roomDiscovery.numRooms, roomDiscovery.numExits, options);
 }
 
 Dungeon.prototype.generateExits = function(location, hash, numRoomsAtDiscovery, numExitsAtDiscovery,) {
@@ -113,7 +108,6 @@ Dungeon.prototype.generateExits = function(location, hash, numRoomsAtDiscovery, 
     if(numExits < 0) {
         numExits = 0;
     }
-    // console.log('numExits', numExits);
     let exits = 0;
     if(numExits >= 4) {
         numExits = 4;
@@ -141,7 +135,6 @@ Dungeon.prototype.generateExits = function(location, hash, numRoomsAtDiscovery, 
         exits = Math.pow(2,chosenExits);
     }
 
-    // console.log({exits});
     exitsBits = exits;
     exits = {
         north: (exitsBits & 1) == 1,
@@ -157,30 +150,21 @@ Dungeon.prototype.generateExits = function(location, hash, numRoomsAtDiscovery, 
     }
 }
 
-Dungeon.prototype.getRandomRoom = async function(location, hash, numRoomsAtDiscovery, numExitsAtDiscovery, options) {
+Dungeon.prototype.computeRoom = async function(location, hash, numRoomsAtDiscovery, numExitsAtDiscovery, options) {
     
     let {
         numExits,
         exits,
         exitsBits
     } = this.generateExits(location, hash, numRoomsAtDiscovery, numExitsAtDiscovery);
-    // console.log({exits});
-
+    
     const ownExitsBits = exitsBits;
     if(options && options.fetchNeighbours) {
         // TODO room cache
-        // console.log('fetching neighbours');
         const north = await this.fetchRoom(locationAt(location, 0, -1), {fetchNeighbours: false});
         const east = await this.fetchRoom(locationAt(location, 1, 0), {fetchNeighbours: false});
         const south = await this.fetchRoom(locationAt(location, 0, 1), {fetchNeighbours: false});
         const west = await this.fetchRoom(locationAt(location, -1, 0), {fetchNeighbours: false});
-
-        // console.log({
-        //     north,
-        //     east,
-        //     south,
-        //     west,
-        // })
 
         exits.north = exits.north || (north && north.exits.south);
         exits.east = exits.east || (east && east.exits.west);
@@ -198,14 +182,9 @@ Dungeon.prototype.getRandomRoom = async function(location, hash, numRoomsAtDisco
             + (exits.west?1:0);     
     }
 
-    // const 
-    // const block = await getBlock(hash)
-    // const roomFromChain = await getPastEvents()
-
+    
     const kind = this.getRandomValue(location, hash, 3, 2).add(new BN(1)).toNumber();
 
-    // const roomFromChain = await this.contract.methods.debug_room(location).call();
-    // console.log({roomFromChain});
     return {
         numExits,
         exits,
@@ -238,104 +217,9 @@ Dungeon.prototype.findFirstExit = function(room, start) {
     return -1;
 }
 
-Dungeon.prototype.findHashThatGivesExitToStartingRoom = async function() {
-    const latestBlock = await getBlock('latest');
-    return {blockNumber: latestBlock.number, blockHash: latestBlock.hash};
-    // for(let blockNumber = latestBlock.number; blockNumber > latestBlock.number - 100; blockNumber--) {
-    //     const block = await getBlock(blockNumber);
-    //     const room = this.getRandomRoom(0, block.hash)
-    //     const firstExit = this.findFirstExit(room);
-    //     if(firstExit != -1) {
-    //         return {blockNumber: block.number, blockHash: block.hash};
-    //     }
-    // }
-    // return null;
-}
 
 Dungeon.prototype.getPlayerLocation = function() {
     return call(this.contract, 'getPlayer', this.player);
 }
 
 module.exports = Dungeon;
-
-/*
-async function fetchRoomDataUsingEvents(dungeon, location) {
-    let roomBlockHash;
-    
-    const discoveryEvents = await dungeon.getPastEvents('RoomDiscovered', {
-        filter:{
-            location
-        }
-    });
-    if(discoveryEvents.length == 0) {
-        return null;
-    }
-    const actualisationEvents = await dungeon.getPastEvents('RoomActualised', {
-        filter:{
-            location
-        }
-    });
-    if(actualisationEvents.length > 0) {
-        const roomActualisation = actualisationEvents[0].returnValues;
-        roomBlockHash = roomActualisation.blockHash;
-    } else {
-        const roomDiscovery = discoveryEvents[0].returnValues;
-        roomBlockHash = await web3.eth.getBlock(roomDiscovery.blockNumber);
-    }
-    
-    return getRandomRoom(location, roomBlockHash);
-}
-
-function getRandomValue(location, hash) {
-    return new BN(web3.utils.soliditySha3(location, hash), 'hex');
-}
-
-function getRandomRoom(location, hash) {
-    const random = getRandomValue(location, hash);
-
-    const exits = random.mod(new BN(16)).toNumber();
-    const kind = random.mod(new BN(2)).add(new BN(1)).toNumber(); // TODO ranomize for each access
-    
-    // TODO fetch adjacent room for outward exits
-    
-    return {
-        exits,
-        kind
-    };
-}
-
-function findFirstExit(room) {
-    for(let i = 0; i < 4; i++) {
-        const exit = Math.pow(2,i)
-        if((room.exits & exit) == exit) {
-            return i;
-        }
-    }
-    return -1;
-}
-
-async function findHashThatGivesExitToStartingRoom() {
-    const latestBlock = await web3.eth.getBlock('latest');
-    for(let blockNumber = latestBlock.number; blockNumber > latestBlock.number - 100; blockNumber--) {
-        const block = await web3.eth.getBlock(blockNumber);
-        const room = getRandomRoom(0, block.hash)
-        const firstExit = findFirstExit(room);
-        if(firstExit != -1) {
-            return {blockNumber: block.number, blockHash: block.hash};
-        }
-    }
-    return null;
-}
-
-function getPlayerLocation(dungeon, player) {
-    return dungeon.methods.getPlayer(player).call();
-}
-
-module.exports = {
-    getPlayerLocation,
-    findHashThatGivesExitToStartingRoom,
-    findFirstExit,
-    getRandomRoom,
-
-}
-*/
