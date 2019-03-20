@@ -5,14 +5,18 @@ module.exports = function(provider) {
         getBlock: web3.eth.getBlock,
         soliditySha3: web3.utils.soliditySha3,
         call: (options, contract, methodName, ...args) => {
+            let blockNumber;
             if(typeof contract == 'string') {
                 args = args.slice();
                 args.splice(0,0,methodName);
                 methodName = contract;
                 contract = options;
                 options = null;
+            } else {
+                blockNumber = options.blockNumber;
+                delete options.blockNumber;
             }
-            return contract.methods[methodName](...args).call(options);
+            return contract.methods[methodName](...args).call(options, blockNumber);
         },
         tx: (options, contract, methodName, ...args) => {
             return contract.methods[methodName](...args).send(options);

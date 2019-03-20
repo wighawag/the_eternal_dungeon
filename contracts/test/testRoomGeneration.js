@@ -20,31 +20,37 @@ tap.test('Dungeon', async(t) => {
     let dungeon;
     t.beforeEach(async() => {
         const deployments = await rocketh.runStages();
-        dungeon = new Dungeon(rocketh.ethereum, users[0], deployments.Dungeon.address, deployments.Dungeon.contractInfo.abi);
+        dungeon = new Dungeon(rocketh.ethereum, deployments.Dungeon.address, deployments.Dungeon.contractInfo.abi);
         await dungeon.start(dungeonOwner);
+        await dungeon.init(users[0]);
     });
 
     t.test('evm result should equal js result', async() => {
-        let location = await dungeon.getPlayerLocation();
-        let room = await dungeon.fetchRoom(location);
+        const room = dungeon.rooms[dungeon.playerLocation];
         let direction = dungeon.findFirstExit(room);
         const firstMoveReceipt = await dungeon.move(direction);
         const discovery = (await dungeon.getPastEvents('RoomDiscovered', {
             fromBlock: firstMoveReceipt.blockNumber,
             toBlock: firstMoveReceipt.blockNumber
         }))[0].returnValues;
-        location = await dungeon.getPlayerLocation();
-        
-        room = await dungeon.fetchRoom(location);
+        console.log({discovery});
+
+        const playerMove = (await dungeon.getPastEvents('PlayerMoved', {
+            fromBlock: firstMoveReceipt.blockNumber,
+            toBlock: firstMoveReceipt.blockNumber
+        }))[0].returnValues;
+        console.log({playerMove});
+
         await dungeon.contract.methods.actualiseBlock(firstMoveReceipt.blockNumber).send({from: dungeon.player, gas})
-        const actualisationReceipt = await dungeon.contract.methods.actualiseRoom(location).send({from: dungeon.player, gas})
+        console.log({playerLocation: dungeon.playerLocation});
+        const actualisationReceipt = await dungeon.contract.methods.actualiseRoom(playerMove.newLocation).send({from: dungeon.player, gas})
         const actualisation = (await dungeon.getPastEvents('RoomActualised', {
             fromBlock: actualisationReceipt.blockNumber,
             toBlock: actualisationReceipt.blockNumber
         }))[0].returnValues;
         
-        const evmExits = await dungeon.contract.methods.generateExits(location, firstMoveReceipt.blockHash, discovery.numRooms, discovery.numExits).call();
-        const jsExits = dungeon.generateExits(location, firstMoveReceipt.blockHash, discovery.numRooms, discovery.numExits);
+        const evmExits = await dungeon.contract.methods.generateExits(playerMove.newLocation, firstMoveReceipt.blockHash, discovery.numRooms, discovery.numExits).call();
+        const jsExits = dungeon.generateExits(dungeon.playerLocation, firstMoveReceipt.blockHash, discovery.numRooms, discovery.numExits);
         assert.equal(evmExits[0], jsExits.exitsBits);
     });
 
