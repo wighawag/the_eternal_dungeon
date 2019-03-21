@@ -37,6 +37,8 @@ const Dungeon = function(provider, address, abi) {
     utils = require('./utils')(provider);
     instantiateContract = utils.instantiateContract;
     tx = utils.tx;
+    sendTx = utils.sendTx;
+    waitReceipt = utils.waitReceipt;
     call = utils.call;
     getPastEvents = utils.getPastEvents;
     getBlock = utils.getBlock;
@@ -52,7 +54,7 @@ util.inherits(Dungeon, EventEmitter);
 
 Dungeon.prototype.start = async function(owner) {
     const latestBlock = await getBlock('latest');
-    return tx({from: owner, gas}, this.contract, 'start', latestBlock.number, latestBlock.hash);
+    return sendTx({from: owner, gas}, this.contract, 'start', latestBlock.number, latestBlock.hash).then(waitReceipt)
 }
 
 Dungeon.prototype.init = async function(player) {
