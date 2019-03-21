@@ -41,6 +41,7 @@ module.exports = function(provider) {
                 if(receipt != null && receipt.blockHash != null) {
                     return receipt;
                 }
+                await pause(interval);
             }
         },
         sendTx: (options, contract, methodName, ...args) => {
