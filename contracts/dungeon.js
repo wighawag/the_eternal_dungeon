@@ -1,8 +1,10 @@
 const BN = require('bn.js');
 const util = require('util');
 const EventEmitter = require('events');
-const ethers = require('ethers');
 
+function pause(duration) {
+    return new Promise((res) => setTimeout(res, duration * 1000));
+}
 
 let utils;
 let 
@@ -10,6 +12,9 @@ instantiateContract,
 tx,
 call,
 getPastEvents,
+sendTx,
+waitReceipt,
+getBlockNumber,
 getBlock,
 soliditySha3;
 const gas = 4000000; // TODO per method
@@ -42,11 +47,8 @@ const Dungeon = function(provider, address, abi) {
     call = utils.call;
     getPastEvents = utils.getPastEvents;
     getBlock = utils.getBlock;
+    getBlockNumber = utils.getBlockNumber;
     soliditySha3 = utils.soliditySha3;
-
-    this.lastBlock = {
-
-    };
 
     this.contract = instantiateContract(address, abi);
 }
@@ -57,163 +59,210 @@ Dungeon.prototype.start = async function(owner) {
     return sendTx({from: owner, gas}, this.contract, 'start', latestBlock.number, latestBlock.hash).then(waitReceipt)
 }
 
-Dungeon.prototype.init = async function(player) {
-    this.player = player;
-    if(this.initializating) {
-        this.newPlayer = true;
-        return;
-    }
-    this.stopListenToPlayerMove();
-    this.playerLocation = null;
-    this.stopListenToRooms();
-    this.rooms = {};
 
-    this.initializating = true;
-    
-    this.playerLocation = await this.fetchPlayerLocation();
-    if(!this.newPlayer && !this.terminated) {
-        await this.fetchRoomAround(this.playerLocation);
+Dungeon.prototype.cancelInit = async function() {
+    console.log('canceling init...');
+    this._stopInit = true;
+    while(this.initializating) {
+        await pause(1);
     }
-    if(!this.newPlayer && !this.terminated) {
-        this.listenForPlayerMove();
-    }
-
-    if(this.newPlayer ||  this.terminated) {
-        this.newPlayer = false;
-        this.initializating = false;
-        await this.init();
-    }
-    this.initializating = false;
-    // TODO emit reset
+    this._stopInit = false;
+    console.log('canceled');
 }
 
-Dungeon.prototype.fetchRoomAround = async function(centre)  {
+Dungeon.prototype.init = async function(player) {
+    if(this.initializating) {
+        await this.cancelInit();
+    }
+    console.log('initializing...');
+    this.initializating = true;
+
+    this.player = player;
+    await this.stopListening();
+    this.playerLocation = null;
+    this.rooms = {};
+
+    this.lastBlock = await getBlockNumber();
+    this.playerLocation = await this.fetchPlayerLocation();
+    await this.fetchRoomsAround(this.playerLocation, this.rooms, {
+        fromBlock:0,
+        toBlock: this.lastBlock
+    });
+
+    this.startListening();
+    this.initializating = false;
+    // TODO emit reset
+    console.log('initialized');
+}
+
+Dungeon.prototype.fetchRoomsAround = async function(centre, rooms, options)  {
     for(let dy = -1; dy <= 1; dy++) {
         for(let dx = -1; dx <= 1; dx++) {
             const location = locationAt(centre,dx,dy);
-            let room = this.rooms[location];
+            let room = rooms[location];
             if(room){
                 continue;
             }
-            let fetchedRoom = await this.fetchRoom(location);
+            let fetchedRoom = await this.fetchRoom(location, options);
             if(!fetchedRoom) {
                 fetchedRoom = {
                     location,
                     status: 'listening'
                 };
-                this.listenForRoom(location);
             }
-            this.rooms[location] = fetchedRoom; 
-            
-            if(this.newPlayer || this.terminated) {
-                break;
-            }
-            
-        }
-        if(this.newPlayer || this.terminated) {
-            break;
+            rooms[location] = fetchedRoom; 
         }
     }
     for(let dy = -2; dy <= 2; dy++) {
         for(let dx = -2; dx <= 2; dx += ((dy == -2 || dy == 2) ? 1 : 4)) {
             const location = locationAt(centre,dx,dy);
-            let room = this.rooms[location];
+            let room = rooms[location];
             if(room){
-                if(room.status == "actualised"){
-                    continue;    
-                } else {
-                    this.stopListenToRoom(location);
-                    delete this.rooms[location];    
-                }
-            } else {
-                console.log(dx,dy , location);    
+                // if(room.status == "actualised"){ //TODO save in a cache so no need to retrieve later
+                //     continue;    
+                // } else {
+                delete rooms[location];    
+                // }
             }
-            
         }
     }
 }
 
-
-let lastToken = 0;
-const jobs = {
-
-}
-Dungeon.prototype.listenForPlayerMove = async function() {
-    if(this.terminated) {
-        return;
-    }
-    console.log('listennin on player move', this.player);
-    const token = 'listenForPlayerMove'; //lastToken++;
-    if(jobs[token]) {
-        return;
-    }
-    jobs[token] = true;
-    while(jobs[token]) {
-        let fromBlock = (this.lastBlock.playerMoved || -1) + 1;
-        const events = await this.getPastEvents('PlayerMoved', {
-            filter:{
-                player: this.player
-            },
-            fromBlock,
-        })
-        if(events.length > 0) {
-            const latestEvent = events[events.length-1];
-            console.log('PlayerMoved', latestEvent.returnValues);
-            this.lastBlock.playerMoved = latestEvent.blockNumber;
-            this.playerLocation = latestEvent.returnValues.newLocation;
-            await this.fetchRoomAround(this.playerLocation); // TODO allow cancel
-            this.emit('playerMoved', this.playerLocation);
+Dungeon.prototype.once = function(event, predicate) {
+    return new Promise((resolve, reject) => {
+        function onEvent(result) {
+            if(!(predicate && !predicate(result))) {
+                this.off(event,onEvent);
+                resolve(result)
+            }
         }
-        // await
+        this.on(event, onEvent);
+    })
+    
+}
+
+Dungeon.prototype.syncOn = async function(blockNumber) {
+    console.log('syncing on ' + blockNumber);
+    while(true) {
+        if(this.lastBlock == blockNumber) {
+            return;
+        }
+        await pause(0.2);
     }
 }
 
-Dungeon.prototype.listenForRoom = async function(location) {
-    if(this.terminated) {
+Dungeon.prototype.startListening = async function() {
+    if(this.listening) {
         return;
     }
-    console.log('listennin on room ', location);
-    const token = location; //lastToken++;
-    if(jobs[token]) {
-        return;
-    }
-    jobs[token] = true;
-    while(jobs[token]) {
-        let fromBlock = (this.lastBlock.roomDiscovered || -1) + 1;
-        const events = await this.getPastEvents('RoomDiscovered', {
-            filter:{
-                location
-            },
-            fromBlock,
-        })
-        if(events.length > 0) {
-            const latestEvent = events[events.length-1];
-            this.lastBlock.roomDiscovered = latestEvent.blockNumber; //conflit with playerMove // dictionary
-            console.log('roomAdded', location);
-            this.emit('roomAdded', location);
-            this.stopListenToRoom(location);
+    console.log('start listening...');
+    this.listening = true;
+    this._stopListening = false;
+    this.interval = this.interval || 5; // TODO
+    while(!this._stopListening) {
+        console.log('fetching latest blocknumber ...');
+        const latestBlock = await getBlockNumber(); // TODO get the hash for reorg detection
+        console.log({latestBlock, lastBlock: this.lastBlock});
+        if(latestBlock > this.lastBlock) {
+            console.log('new blocks');
+            const newState = {};
+            newState.playerLocation = this.playerLocation;
+            newState.rooms = {};
+            for(let roomLocation of Object.keys(this.rooms)) {
+                newState.rooms[roomLocation] = this.rooms[roomLocation];
+            }
+
+            const events = await this.getPastEvents('PlayerMoved', {
+                filter:{
+                    player: this.player
+                },
+                fromBlock: this.lastBlock+1,
+                toBlock: latestBlock,
+            })
+            if(events.length > 0) {
+                
+                const latestEvent = events[events.length-1];
+                newState.playerLocation = latestEvent.returnValues.newLocation;
+                console.log('PlayerMoved', newState.playerLocation);
+                await this.fetchRoomsAround(newState.playerLocation, newState.rooms, {
+                    fromBlock: 0,
+                    toBlock: latestBlock
+                });
+                // console.log(newState.rooms)
+            }
+
+            for(let roomLocation of Object.keys(newState.rooms)) {
+                const room = newState.rooms[roomLocation];
+                if(room.status == 'listening') {
+                    const fetchedRoom = await this.fetchRoom(roomLocation, {
+                        fromBlock: this.lastBlock+1,
+                        toBlock: latestBlock,
+                    })
+                    if(fetchedRoom) {
+                        newState.rooms[roomLocation] = fetchedRoom;
+                    }
+                }
+            }
+
+            const clonedRooms = {};
+            for(let roomLocation of Object.keys(this.rooms)) {
+                clonedRooms[roomLocation] = this.rooms[roomLocation];
+            }
+            for(let roomLocation of Object.keys(newState.rooms)) {
+                const currentRoom = this.rooms[roomLocation];
+                const newRoom = newState.rooms[roomLocation];
+                if(currentRoom) {
+                    if(currentRoom.status == 'listening' && newRoom.status != 'listening') {
+                        console.log('new room from listen', roomLocation);
+                    }
+                } else {
+                    if(newRoom.status != 'listening') {
+                        console.log('new room', roomLocation);
+                    } else {
+                        console.log('new listen', roomLocation);
+                    }
+                }
+                delete clonedRooms[roomLocation];
+            }
+            for(let roomLocation of Object.keys(clonedRooms)) {
+                const room = clonedRooms[roomLocation];
+                if(room.status != 'listening') {
+                    console.log('room removed', roomLocation);
+                } else {
+                    console.log('listen removed', roomLocation);
+                }
+            }
+            this.lastBlock = latestBlock;
+            this.playerLocation = newState.playerLocation;
+            this.rooms = newState.rooms;
+
+            this.emit('block', this.lastBlock);
+            // TODO 
+            // this.emit('playerMoved', this.playerLocation); // TODO if different
+            // this.emit('roomAdded', this); // TODO
+            // this.emit('roomRemoved', this); // TODO
         }
-        // await
-    }
-}
-
-Dungeon.prototype.stopListenToRooms = function() {
-    if(this.rooms) {
-        const roomLocations = Object.keys(this.rooms);
-        for(let roomLocation of roomLocations) {
-            this.stopListenToRoom(roomLocation);
+        if(this._stopListening) {break;}
+        if(this.interval > 0.5) {
+            await pause(0.5);
+            if(this._stopListening) {break;}
+            await pause(this.interval - 0.5)
+        } else {
+            await pause(this.interval)
         }
     }
+    this.listening = false;
+    console.log('listening loop stopped');
 }
 
-Dungeon.prototype.stopListenToRoom = function(location) {
-    console.log('stop listennin on room', location);
-    delete jobs[location];
-}
-
-Dungeon.prototype.stopListenToPlayerMove = function() {
-    console.log('stop listennin on player move');
-    delete jobs['listenForPlayerMove'];
+Dungeon.prototype.stopListening = async function() {
+    console.log('stop listening...');
+    this._stopListening = true;
+    while(this.listening) {
+        await pause(1);
+    }
+    console.log('stopped');
+    this._stopListening = false;
 }
 
 
@@ -236,7 +285,8 @@ Dungeon.prototype.fetchRoom = async function(location, options) {
     let roomBlockHash;
     
     const discoveryEvents = await getPastEvents(this.contract, 'RoomDiscovered', {
-        fromBlock:0,
+        fromBlock: options.fromBlock,
+        toBlock: options.toBlock,
         filter:{
             location : location.toString ? location.toString(10) : location
         }
@@ -246,6 +296,7 @@ Dungeon.prototype.fetchRoom = async function(location, options) {
     }
     const actualisationEvents = await getPastEvents(this.contract, 'RoomActualised', {
         fromBlock:0,
+        toBlock: this.lastBlock,
         filter:{
             location : location.toString ? location.toString(10) : location
         }
@@ -369,14 +420,16 @@ Dungeon.prototype.findFirstExit = function(room, start) {
 
 
 Dungeon.prototype.fetchPlayerLocation = function() {
-    return call(this.contract, 'getPlayer', this.player);
+    return call({blockNumber: this.lastBlock}, this.contract, 'getPlayer', this.player);
 }
 
-Dungeon.prototype.terminate = function() {
-    this.terminated = true;
+Dungeon.prototype.terminate = async function() {
     console.log('TERMINATING...');
-    this.stopListenToPlayerMove();
-    this.stopListenToRooms();
+    if(this.initializating){
+        await this.cancelInit();
+    }
+    await this.stopListening();
+    console.log('TERMINATED');
 }
 
 module.exports = Dungeon;

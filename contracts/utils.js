@@ -8,6 +8,7 @@ module.exports = function(provider) {
     const web3 = new Web3(provider);
     return {
         getBlock: web3.eth.getBlock,
+        getBlockNumber: web3.eth.getBlockNumber,
         soliditySha3: web3.utils.soliditySha3,
         call: (options, contract, methodName, ...args) => {
             let blockNumber;

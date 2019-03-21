@@ -15,6 +15,33 @@ function logObj(obj) {
     console.log(JSON.stringify(obj, null, '  '));
 }
 
+tap.test('Dungeon init', async(t) => {
+
+    let dungeon;
+    t.beforeEach(async() => {
+        const deployments = await rocketh.runStages();
+        dungeon = new Dungeon(rocketh.ethereum, deployments.Dungeon.address, deployments.Dungeon.contractInfo.abi);
+        await dungeon.start(dungeonOwner);
+    });
+
+    t.afterEach(async() => {
+        await dungeon.terminate();
+    });
+
+
+    t.test('double init', async() => {
+        dungeon.init(users[0]);
+        await dungeon.init(users[1]);
+    });
+
+    t.test('cancel init', async() => {
+        dungeon.init(users[0]);
+        await dungeon.cancelInit();
+    });
+
+});
+
+
 tap.test('Dungeon', async(t) => {
     
     let dungeon;
@@ -27,13 +54,14 @@ tap.test('Dungeon', async(t) => {
 
     t.afterEach(async() => {
         await dungeon.terminate();
-        // await new Promise((resolve) => setTimeout(resolve, 1000));
     });
 
     t.test('move', async() => {
         const room = dungeon.rooms[dungeon.playerLocation];
         const direction = dungeon.findFirstExit(room);
         const receipt = await dungeon.move(direction);
+        await dungeon.once('block', block => block >= receipt.blockNumber);
+        // await dungeon.syncOn(receipt.blockNumber);
         const events = await dungeon.getPastEvents('RoomDiscovered', {fromBlock: receipt.blockNumber, toBlock: receipt.blockNumber});
         assert.equal(events.length, 1);
         const playerMovedEvents = await dungeon.getPastEvents('PlayerMoved', {fromBlock: receipt.blockNumber, toBlock: receipt.blockNumber});
