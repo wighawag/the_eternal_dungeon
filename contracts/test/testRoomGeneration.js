@@ -9,6 +9,10 @@ const {getDeployedContract} = require('rocketh-web3')(rocketh, require('Web3'));
 
 const {users, dungeonOwner} = rocketh.namedAccounts;
 
+const {
+    waitReceipt
+} = require('../utils')(rocketh.ethereum);
+
 const gas = 4000000;
 
 function logObj(obj) {
@@ -20,37 +24,49 @@ tap.test('Dungeon', async(t) => {
     let dungeon;
     t.beforeEach(async() => {
         const deployments = await rocketh.runStages();
-        dungeon = new Dungeon(rocketh.ethereum, deployments.Dungeon.address, deployments.Dungeon.contractInfo.abi);
-        await dungeon.start(dungeonOwner);
+        dungeon = new Dungeon(rocketh.ethereum, deployments.Dungeon.address, deployments.Dungeon.contractInfo.abi, {
+            // logLevel: 'trace',
+        });
+        await dungeon.start(dungeonOwner).then(waitReceipt);
         await dungeon.init(users[0]);
+    });
+
+    t.afterEach(async() => {
+        await dungeon.terminate();
     });
 
     t.test('evm result should equal js result', async() => {
         const room = dungeon.rooms[dungeon.playerLocation];
-        let direction = dungeon.findFirstExit(room);
-        const firstMoveReceipt = await dungeon.move(direction);
+        let direction = dungeon._findFirstExit(room);
+        const firstMoveReceipt = await dungeon.move(direction).then(waitReceipt);
         const discovery = (await dungeon.getPastEvents('RoomDiscovered', {
             fromBlock: firstMoveReceipt.blockNumber,
             toBlock: firstMoveReceipt.blockNumber
         }))[0].returnValues;
-        console.log({discovery});
+        // console.log({discovery});
 
         const playerMove = (await dungeon.getPastEvents('PlayerMoved', {
             fromBlock: firstMoveReceipt.blockNumber,
             toBlock: firstMoveReceipt.blockNumber
         }))[0].returnValues;
-        console.log({playerMove});
+        // console.log({playerMove});
 
         await dungeon.contract.methods.actualiseBlock(firstMoveReceipt.blockNumber).send({from: dungeon.player, gas})
-        console.log({playerLocation: dungeon.playerLocation});
+        
+        await dungeon.once('block', block => block >= firstMoveReceipt.blockNumber);
+        // console.log({playerLocation: dungeon.playerLocation});
+        
         const actualisationReceipt = await dungeon.contract.methods.actualiseRoom(playerMove.newLocation).send({from: dungeon.player, gas})
         const actualisation = (await dungeon.getPastEvents('RoomActualised', {
             fromBlock: actualisationReceipt.blockNumber,
             toBlock: actualisationReceipt.blockNumber
         }))[0].returnValues;
-        
+        // console.log({actualisation});
+
         const evmExits = await dungeon.contract.methods.generateExits(playerMove.newLocation, firstMoveReceipt.blockHash, discovery.numRooms, discovery.numExits).call();
-        const jsExits = dungeon.generateExits(dungeon.playerLocation, firstMoveReceipt.blockHash, discovery.numRooms, discovery.numExits);
+        // console.log({evmExits});
+        const jsExits = dungeon.generateExits(playerMove.newLocation, firstMoveReceipt.blockHash, discovery.numRooms, discovery.numExits);
+        // console.log({jsExits});
         assert.equal(evmExits[0], jsExits.exitsBits);
     });
 
