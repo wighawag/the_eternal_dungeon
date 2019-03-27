@@ -66,79 +66,50 @@ tap.test('Dungeon', async(t) => {
         await dungeon.terminate();
     });
 
-    // t.test('move', async() => {
-    //     const room = dungeon.rooms[dungeon.playerLocation];
-    //     const direction = dungeon._findFirstExit(room);
-    //     const receipt = await dungeon.move(direction).then(waitReceipt);
-        
-    //     await dungeon.once('block', block => block >= receipt.blockNumber);
-    //     assert.equal(dungeon.playerLocation, Dungeon.locationInDirection(room.location, direction))
-        
-    //     const events = await dungeon.getPastEvents('RoomDiscovered', {fromBlock: receipt.blockNumber, toBlock: receipt.blockNumber});
-    //     assert.equal(events.length, 1);
-    //     const playerMovedEvents = await dungeon.getPastEvents('PlayerMoved', {fromBlock: receipt.blockNumber, toBlock: receipt.blockNumber});
-    //     assert.equal(playerMovedEvents.length, 1);
-    // });
-
-    t.test('move twice', async() => {
-        let room = dungeon.rooms[dungeon.playerLocation];
-        let direction = dungeon._findFirstExit(room);
-
-        // console.log({room,direction});
-        const firstMoveReceipt = await dungeon.move(direction).then(waitReceipt);
-        
-        await dungeon.once('block', block => block >= firstMoveReceipt.blockNumber);
-
-        await dungeon.contract.methods.actualiseBlock(firstMoveReceipt.blockNumber).send({from: dungeon.player, gas})
-        await dungeon.contract.methods.actualiseRoom(dungeon.playerLocation).send({from: dungeon.player, gas})
-
-        room = dungeon.rooms[dungeon.playerLocation];
-
-        // const discoveryEvents = await dungeon.getPastEvents('RoomDiscovered', {fromBlock: firstMoveReceipt.blockNumber, toBlock: firstMoveReceipt.blockNumber});
-        // const discovery = discoveryEvents[0].returnValues;
-        // const evmExits = await dungeon.contract.methods.generateExits(room.location, firstMoveReceipt.blockHash, discovery.numRooms, discovery.numExits).call();
-        // const jsExits = dungeon.generateExits(room.location, firstMoveReceipt.blockHash, discovery.numRooms, discovery.numExits); 
-        // console.log({room, evmExits, jsExits});
-
-        const reverseDirection = (direction+2)%4;
-        direction = dungeon._findFirstExit(room, reverseDirection+1);
-        // console.log({reverseDirection, direction})
-        const receipt = await dungeon.move(direction).then(waitReceipt);
-
-        // await dungeon.once('block', block => block >= receipt.blockNumber);
-
-        const events = await dungeon.getPastEvents('RoomDiscovered', {fromBlock: receipt.blockNumber, toBlock: receipt.blockNumber});
-        if(direction != reverseDirection) {
-            assert.equal(events.length, 1);
-        } else {
-            assert.equal(events.length, 0);
-        }
+    t.test('move', async() => {
+        const room = dungeon.rooms[dungeon.playerLocation];
+        const direction = dungeon._findFirstExit(room);
+        dungeon.move(direction);
+        await dungeon.once('playerMoved');
+        assert.equal(dungeon.playerLocation, Dungeon.locationInDirection(room.location, direction))
     });
 
-    // t.test('move and back', async() => {
-    //     let room = dungeon.rooms[dungeon.playerLocation];
-    //     let direction = dungeon._findFirstExit(room);
-    //     await dungeon.move(direction);
+    t.test('move twice', async() => {
+        const firstRoom = dungeon.rooms[dungeon.playerLocation];
+        let direction = dungeon._findFirstExit(firstRoom);
+        dungeon.move(direction);
+        await dungeon.once('playerMoved');
 
-    //     const reverseDirection = (direction+2)%4;
-    //     const receipt = await dungeon.move(reverseDirection).then(waitReceipt);
-    //     let events = await dungeon.getPastEvents('RoomActualised', {fromBlock: receipt.blockNumber, toBlock: receipt.blockNumber});
-    //     assert.equal(events.length, 1);
-
-    //     events = await dungeon.getPastEvents('RoomDiscovered', {fromBlock: receipt.blockNumber, toBlock: receipt.blockNumber});
-    //     assert.equal(events.length, 0);
-    // });
-
-    // t.test('move and back instant', async() => {
-    //     let room = dungeon.rooms[dungeon.playerLocation];
-    //     let direction = dungeon._findFirstExit(room);
-    //     await dungeon.move(direction);
-    //     const reverseDirection = (direction+2)%4;
-    //     const receipt = await dungeon.move(reverseDirection).then(waitReceipt);
+        const secondRoom = dungeon.rooms[dungeon.playerLocation];
+        const reverseDirection = (direction+2)%4;
+        direction = dungeon._findFirstExit(secondRoom, reverseDirection+1);
         
-    //     await dungeon.once('block', block => block >= receipt.blockNumber);
-    //     assert.equal(dungeon.playerLocation, room.location);
-    // });
+        dungeon.move(direction);
+        await dungeon.once('playerMoved');
+        assert.equal(dungeon.playerLocation,  Dungeon.locationInDirection(secondRoom.location, direction));
+    });
+
+    t.test('move and back', async() => {
+        let firstRoom = dungeon.rooms[dungeon.playerLocation];
+        let direction = dungeon._findFirstExit(firstRoom);
+        dungeon.move(direction);
+        await dungeon.once('playerMoved');
+
+        const reverseDirection = (direction+2)%4;
+        dungeon.move(reverseDirection);
+        await dungeon.once('playerMoved');
+        assert.equal(dungeon.playerLocation, firstRoom.location);
+    });
+
+    t.test('move and back instant', async() => {
+        let firstRoom = dungeon.rooms[dungeon.playerLocation];
+        let direction = dungeon._findFirstExit(firstRoom);
+        await dungeon.move(direction);
+        const reverseDirection = (direction+2)%4;
+        const receipt = await dungeon.move(reverseDirection).then(waitReceipt);
+        await dungeon.once('block', block => block >= receipt.blockNumber);
+        assert.equal(dungeon.playerLocation, firstRoom.location);
+    });
 
     // t.test('move twice and back', async() => {
         

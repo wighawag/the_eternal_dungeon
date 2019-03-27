@@ -256,6 +256,32 @@ Dungeon.prototype.once = function(event, predicate) {
     
 }
 
+Dungeon.prototype.opositeExit = function (location, direction) {
+    const roomLocation = Dungeon.locationInDirection(location, direction);
+    const room = this.rooms[roomLocation];
+    const reverseDirection = (direction + 2) % 4;
+    if(room) {
+        return room.exitBits & Math.pow(2, reverseDirection) == Math.pow(2, reverseDirection);
+    } else {
+        return false;
+    }
+}
+
+Dungeon.prototype.allExitsFor = function(roomOrLocation) {
+    let room;
+    if(typeof roomOrLocation == 'string') {
+        room = this.rooms[roomOrLocation];
+    } else {
+        room = roomOrLocation;
+    }
+    return {
+        north: room.exits.north || this.opositeExit(room.location, 0),
+        east: room.exits.east || this.opositeExit(room.location, 1),
+        south: room.exits.south || this.opositeExit(room.location, 2),
+        west: room.exits.west || this.opositeExit(room.location, 3),
+    }
+}
+
 Dungeon.prototype._findFirstExit = function(roomOrLocation, start) {
     let currentRoom;
     if(typeof roomOrLocation == 'string') {
@@ -263,14 +289,15 @@ Dungeon.prototype._findFirstExit = function(roomOrLocation, start) {
     } else {
         currentRoom = roomOrLocation;
     }
+    const allExits = this.allExitsFor(currentRoom);
     start = start || 0;
     for(let i = 0; i < 4; i++) {
         const j = (i+start) % 4;
-        const exit = Math.pow(2,j)
-        const opositeExit = Math.pow(2, (j + 2) % 4);
-        const nextRoom = this.rooms[Dungeon.locationInDirection(currentRoom.location, j)];
-        if((currentRoom.exitsBits & exit) == exit || (nextRoom.exitsBits & opositeExit) == opositeExit) {
-            return j;
+        switch(j) {
+            case 0: if(allExits.north) {return j;} break;
+            case 1: if(allExits.east) {return j;} break;
+            case 2: if(allExits.south) {return j;} break;
+            case 3: if(allExits.west) {return j;} break;
         }
     }
     return -1;
@@ -298,6 +325,9 @@ Dungeon.prototype._startListening = async function() {
     while(!this._stopListeningRequested) {
         try{
             const latestBlock = await getBlockNumber(); // TODO get the hash for reorg detection
+            let newPlayerLocation = false;
+            const roomsAdded = [];
+            const roomsRemoved = [];
             if(latestBlock > this.lastBlock) {
                 this._trace('new blocks');
                 const newState = {};
@@ -319,6 +349,7 @@ Dungeon.prototype._startListening = async function() {
                     const latestEvent = events[events.length-1];
                     newState.playerLocation = latestEvent.returnValues.newLocation;
                     this._info('PlayerMoved', newState.playerLocation);
+                    newPlayerLocation = true;
                     await this._fetchRoomsAround(newState.playerLocation, newState.rooms, {
                         fromBlock: 0,
                         toBlock: latestBlock
@@ -348,12 +379,15 @@ Dungeon.prototype._startListening = async function() {
                     if(currentRoom) {
                         if(currentRoom.status == 'listening' && newRoom.status != 'listening') {
                             this._info('new room from listen', roomLocation);
+                            roomsAdded.push(newRoom);
                         }
                     } else {
                         if(newRoom.status != 'listening') {
                             this._info('new room', roomLocation);
+                            roomsAdded.push(newRoom);
                         } else {
                             this._info('new listen', roomLocation);
+                            roomsAdded.push(newRoom);
                         }
                     }
                     delete clonedRooms[roomLocation];
@@ -362,19 +396,29 @@ Dungeon.prototype._startListening = async function() {
                     const room = clonedRooms[roomLocation];
                     if(room.status != 'listening') {
                         this._info('room removed', roomLocation);
+                        roomsRemoved.push(room);
                     } else {
                         this._info('listen removed', roomLocation);
+                        roomsRemoved.push(room);
                     }
                 }
                 this.lastBlock = latestBlock;
                 this.playerLocation = newState.playerLocation;
                 this.rooms = newState.rooms;
 
+                
+                for(let room of roomsRemoved) {
+                    this._emit('roomRemoved', room);
+                }
+                for(let room of roomsAdded) {
+                    this._emit('roomAdded', room);
+                }
+
+                if(newPlayerLocation) {
+                    this._emit('playerMoved', this.playerLocation);
+                }
+
                 this._emit('block', this.lastBlock);
-                // TODO 
-                // this._emit('playerMoved', this.playerLocation); // TODO if different
-                // this._emit('roomAdded', this); // TODO
-                // this._emit('roomRemoved', this); // TODO
             }
             if(this._stopListeningRequested) {break;}
             if(this.interval > 0.5) {
