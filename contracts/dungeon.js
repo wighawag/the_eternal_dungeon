@@ -173,7 +173,9 @@ Dungeon.prototype.init = async function(player) { // TODO return same promise if
     this.rooms = {};
 
     this.lastBlock = await getBlockNumber();
+    this._trace({lastBlock: this.lastBlock});
     this.playerLocation = await this.fetchPlayerLocation();
+    this._trace({playerLocation: this.playerLocation});
     await this._fetchRoomsAround(this.playerLocation, this.rooms, {
         fromBlock:0,
         toBlock: this.lastBlock
@@ -258,10 +260,13 @@ Dungeon.prototype.once = function(event, predicate) {
 
 Dungeon.prototype.opositeExit = function (location, direction) {
     const roomLocation = Dungeon.locationInDirection(location, direction);
+    // console.log(direction, roomLocation);
     const room = this.rooms[roomLocation];
+    // console.log(room);
     const reverseDirection = (direction + 2) % 4;
+    // console.log(reverseDirection);
     if(room) {
-        return room.exitBits & Math.pow(2, reverseDirection) == Math.pow(2, reverseDirection);
+        return (room.exitsBits & Math.pow(2, reverseDirection)) == Math.pow(2, reverseDirection);
     } else {
         return false;
     }

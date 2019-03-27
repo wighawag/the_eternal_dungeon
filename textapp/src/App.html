@@ -1,0 +1,20 @@
+{#await $loading}
+	<p>Loading ...</p>
+{:then answer}
+	<Room/>
+	<hr/>
+	<Adventurer/>
+{:catch error}
+	<p>well that's odd : {error}</p>
+{/await}
+
+<script>
+	import Room from './components/Room.html';
+	import Adventurer from './components/Adventurer.html';
+	export default {
+		components: {
+			Room,
+			Adventurer
+		}
+	};
+</script>
