@@ -25,6 +25,11 @@ async function loadData() {
         blockInterval: 12
     });
 	await dungeon.init(accounts[0]);
+
+	// TODO remove
+	window.dungeon = dungeon;
+	window.web3 = web3;
+	window.BN = BN;
 	
 	const playerLocation = dungeon.playerLocation;
 
@@ -47,7 +52,8 @@ var loading = new Promise((resolve, reject) => {
 			// store.set({eth: loadETH})
 			store.set(data);
 			
-			data.dungeon.on('playedMoved', (newLocation) => {
+			data.dungeon.on('playerMoved', (newLocation) => {
+				console.log('Player moved to ' + newLocation);
 				store.set({playerLocation: newLocation});
 			})
 			resolve();	

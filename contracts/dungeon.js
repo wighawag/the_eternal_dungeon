@@ -494,21 +494,25 @@ Dungeon.prototype.fetchRoom = async function(location, options) {
 }
 
 Dungeon.prototype.generateExits = function(location, hash, numRoomsAtDiscovery, numExitsAtDiscovery) {
-    var red = BN.red('k256');
-    var r1 = (new BN(2)).toRed(red);
-    var r2 = (new BN(numRoomsAtDiscovery)).toRed(red);
-    var r3 = (new BN(numExitsAtDiscovery)).toRed(red);
-    var rr = r1.add(r2.redSqrt()).sub(r3);
-
-    let target =  rr.fromRed(); //(new BN(2)).add(numRoomsAtDiscovery.redSqrt()).sub(numExitsAtDiscovery);
+    function sqrt(x) {
+        let z = x.add(new BN(1)).div(new BN(2));
+        let y = x;
+        while (z.lt(y)) {
+            y = z;
+            z = x.div(z).add(z).div(new BN(2));
+        }
+        return y;
+    }
+    let target =  (new BN(2)).add(sqrt(new BN(numRoomsAtDiscovery))).sub(new BN(numExitsAtDiscovery));
     if(target.lt(new BN(-4))) {
         target = new BN(-4);
     }
     if(target.gt(new BN(4))) {
         target = new BN(4);
     }
+    console.log(location, target.toString(10));
     const random = this.getRandomValue(location, hash, 1, 3);
-    let numExits = target.sub(new BN(1)).add(random.mod(new BN(3))).toNumber();
+    let numExits = target.sub(new BN(1)).add(random).toNumber();
     if(numExits < 0) {
         numExits = 0;
     }
