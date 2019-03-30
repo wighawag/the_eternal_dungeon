@@ -81,18 +81,18 @@ contract Dungeon {
         }
     }
 
-    event Debug(int256 target, uint256 random);
+    event Debug(uint256 location, int256 target, uint256 random);
     // TODO make it internal and pure
     function generateExits(uint256 location, bytes32 blockHash, uint256 numRoomsAtDiscovery, uint256 numExitsAtDiscovery) public /*TODO pure*/ returns(uint8, uint8) {
         int256 target =  int256((2 + sqrt(numRoomsAtDiscovery)) - numExitsAtDiscovery); // strictly based on data at the point of discovery // => dungeon could stop
-        if(target < -4) {
-            target = -4;
+        if(target < 1) {
+            target = 1;
         }
-        if(target > 4) {
-            target = 4;
+        if(target > 3) {
+            target = 3;
         }
         uint256 random = uint256(keccak256(abi.encodePacked(location, blockHash, uint8(1))));
-        emit Debug(target, random);
+        emit Debug(location, target, random);
         int8 numExits = int8(target-1 + uint8(random % 3));
         if(numExits < 0) {
             numExits = 0;
@@ -152,11 +152,11 @@ contract Dungeon {
                     closedExits ++;
                 }
             }
-            if(rooms[location+1].kind > 0) {
+            if(rooms[location-1].kind > 0) {
                 if((exits & 8) == 8) {
                     closedExits ++;
                 }
-                if((rooms[location+1].exits & 2) == 2) { // west
+                if((rooms[location-1].exits & 2) == 2) { // west
                     closedExits ++;
                 }
             }

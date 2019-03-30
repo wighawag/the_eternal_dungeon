@@ -3,7 +3,7 @@ import App from './App.html';
 import Web3 from 'web3';
 import Dungeon from '../../contracts/dungeon';
 import BN from 'bn.js';
-import DungeonInfo from '../../contracts/test_deployments/1112/Dungeon.json'
+import DungeonInfo from '../../contracts/test_deployments/Dungeon.json'
 
 function loadWeb3() {
 	if (window.ethereum) {

@@ -490,7 +490,7 @@ Dungeon.prototype.fetchRoom = async function(location, options) {
         roomBlockHash = (await getBlock(roomDiscovery.blockNumber)).hash;
     }
     
-    return this.computeRoom(location, roomBlockHash, roomDiscovery.numRooms, roomDiscovery.numExits, status);
+    return this.computeRoom(location, roomBlockHash, roomDiscovery.blockNumber, roomDiscovery.numRooms, roomDiscovery.numExits, status);
 }
 
 Dungeon.prototype.generateExits = function(location, hash, numRoomsAtDiscovery, numExitsAtDiscovery) {
@@ -504,11 +504,11 @@ Dungeon.prototype.generateExits = function(location, hash, numRoomsAtDiscovery, 
         return y;
     }
     let target =  (new BN(2)).add(sqrt(new BN(numRoomsAtDiscovery))).sub(new BN(numExitsAtDiscovery));
-    if(target.lt(new BN(-4))) {
-        target = new BN(-4);
+    if(target.lt(new BN(1))) {
+        target = new BN(1);
     }
-    if(target.gt(new BN(4))) {
-        target = new BN(4);
+    if(target.gt(new BN(3))) {
+        target = new BN(3);
     }
     console.log(location, target.toString(10));
     const random = this.getRandomValue(location, hash, 1, 3);
@@ -558,7 +558,7 @@ Dungeon.prototype.generateExits = function(location, hash, numRoomsAtDiscovery, 
     }
 }
 
-Dungeon.prototype.computeRoom = async function(location, hash, numRoomsAtDiscovery, numExitsAtDiscovery, status) {
+Dungeon.prototype.computeRoom = async function(location, hash, blockNumber, numRoomsAtDiscovery, numExitsAtDiscovery, status) {
     
     let {
         numExits,
@@ -571,6 +571,8 @@ Dungeon.prototype.computeRoom = async function(location, hash, numRoomsAtDiscove
     return {
         status,
         location,
+        hash,
+        blockNumber,
         numExits,
         exits,
         exitsBits,
