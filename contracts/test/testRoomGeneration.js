@@ -27,7 +27,7 @@ tap.test('Dungeon', async(t) => {
         dungeon = new Dungeon(rocketh.ethereum, deployments.Dungeon.address, deployments.Dungeon.contractInfo.abi, {
             // logLevel: 'trace',
         });
-        await dungeon.start(dungeonOwner).then(waitReceipt);
+        // already done as part of stage : await dungeon.start(dungeonOwner).then(waitReceipt);
         await dungeon.init(users[0]);
     });
 

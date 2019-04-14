@@ -20,7 +20,7 @@ const gas = 4000000; // TODO per method
 const Dungeon = function(provider, address, abi, options) {
     options = options || {
         logLevel: 'info',
-        blockInterval: 12
+        blockInterval: 12,
     }
     const {
         logLevel,
@@ -35,10 +35,10 @@ const Dungeon = function(provider, address, abi, options) {
             default : this._info('logLevel ' + logLevel + ' not supported');
         }
     }
-    
     this.provider = provider;
     this.interval = blockInterval / 2;
-
+    this.energy = 0;
+    this.playerMoved = false;
     this.callbacks = {};
 
     // INITIALISE utils
@@ -160,7 +160,7 @@ Dungeon.prototype.cancelInit = async function() {
     this._trace('canceled');
 }
 
-Dungeon.prototype.init = async function(player) { // TODO return same promise if any whenthis.player == new player
+Dungeon.prototype.init = async function(player, delegate) { // TODO return same promise if any whenthis.player == new player
     if(this.initializating) {
         await this.cancelInit();
     }
@@ -168,18 +168,26 @@ Dungeon.prototype.init = async function(player) { // TODO return same promise if
     this.initializating = true;
 
     this.player = player;
+    this.delegate = delegate;
     await this._stopListening();
     this.playerLocation = null;
     this.rooms = {};
 
     this.lastBlock = await getBlockNumber();
     this._trace({lastBlock: this.lastBlock});
-    this.playerLocation = await this.fetchPlayerLocation();
+    const playerData = await this.fetchPlayer(this.lastBlock);
+    console.log(playerData);
+    this.playerLocation = playerData.location;
+    this.energy = playerData.energy;
+    this.inDungeon = playerData.inDungeon;
+
     this._trace({playerLocation: this.playerLocation});
     await this._fetchRoomsAround(this.playerLocation, this.rooms, {
         fromBlock:0,
         toBlock: this.lastBlock
     });
+
+    this.isCurrentDelegate = await this.fetchIsDelegate();
 
     this._startListening();
     this.initializating = false;
@@ -453,7 +461,15 @@ Dungeon.prototype._stopListening = async function() {
 
 
 Dungeon.prototype.move = async function(direction) {
-    return sendTx({from: this.player, gas}, this.contract, 'move', direction);
+    return sendTx({from: this.player, gas}, this.contract, 'move', this.player, direction);
+}
+
+Dungeon.prototype.join = async function() {
+    return sendTx({from: this.player, gas, value: "5000000000000000000"}, this.contract, 'join', this.delegate);
+}
+
+Dungeon.prototype.addDelegate = async function() {
+    return sendTx({from: this.player, gas, value: "5000000000000000"}, this.contract, 'addDelegate', this.delegate);
 }
 
 Dungeon.prototype.getPastEvents = function(eventName, options) {
@@ -475,7 +491,7 @@ Dungeon.prototype.fetchRoom = async function(location, options) {
     }
     const actualisationEvents = await getPastEvents(this.contract, 'RoomActualised', {
         fromBlock:0,
-        toBlock: this.lastBlock,
+        toBlock: options.toBlock,
         filter:{
             location : location.toString ? location.toString(10) : location
         }
@@ -592,8 +608,12 @@ Dungeon.prototype.getRandomValue = function(location, hash, index, mod) {
 }
 
 
-Dungeon.prototype.fetchPlayerLocation = function() {
-    return call({blockNumber: this.lastBlock}, this.contract, 'getPlayer', this.player);
+Dungeon.prototype.fetchPlayer = function(block) {
+    return call({blockNumber: block}, this.contract, 'getPlayer', this.player);
+}
+
+Dungeon.prototype.fetchIsDelegate = function(block) {
+    return call({blockNumber: block}, this.contract, 'isDelegateFor', this.delegate, this.player);
 }
 
 Dungeon.prototype.terminate = async function() {

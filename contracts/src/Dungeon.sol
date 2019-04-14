@@ -2,6 +2,8 @@ pragma solidity 0.5.5;
 
 contract Dungeon {
 
+    uint256 private constant MIN_BALANCE = 5000000000000000; // TODO
+
     event RoomDiscovered(uint256 indexed location, uint64 blockNumber, uint64 numRooms, uint32 numExits);
     event RoomActualised(uint256 indexed location, bytes32 blockHash, uint8 exits, uint8 kind, uint64 numRooms, uint32 numExits); // TODO remve exits and kind and room.numRooms and room.numExits
     // event BlockActualised();
@@ -34,14 +36,84 @@ contract Dungeon {
 
     mapping(address => Player) players;
     struct Player {
+        bool inDungeon;
+        uint256 energy;
         uint256 location;
     }
+    mapping(address => address) delegates;
 
     mapping(uint256 => Room) rooms;
 
     address owner;
     constructor(address _owner) public {
         owner = _owner;
+    }
+
+    modifier withCorrectSender(address payable sender) {
+        if(msg.sender != sender) {
+            require(delegates[msg.sender] == sender);
+            if(MIN_BALANCE > sender.balance) {
+                uint256 balanceToGive = MIN_BALANCE - sender.balance; // TODO consider gasleft()
+                Player storage player = players[sender];
+                uint256 energy = player.energy;
+                if(balanceToGive > energy) {
+                    balanceToGive = energy;
+                }
+                if(balanceToGive  > 0) {
+                    player.energy = energy - balanceToGive;
+                    sender.transfer(balanceToGive);
+                }
+            }
+        }
+        _;
+    }
+
+    function isDelegateFor(address delegate, address player) external returns (bool) {
+        return delegates[delegate] == player;
+    }
+
+    function refill() public payable {
+        require(players[msg.sender].inDungeon, "not in dungeon");
+        _refill(msg.value);
+    }
+
+    function _refill(uint256 value) internal {
+        players[msg.sender].energy += value;
+    }
+
+    function join(address payable _newDelegate) external payable {
+        require(!players[msg.sender].inDungeon, "already in dungeon");
+        players[msg.sender].inDungeon = true;
+        
+        if(_newDelegate != address(0)) {
+            _refill(msg.value - MIN_BALANCE);
+            _addDelegate(_newDelegate);
+        } else {
+            // can play without energy ? // TODO remove
+        }
+    }
+
+    function quit() external {
+        require(players[msg.sender].inDungeon, "not in dungeon");
+        uint256 energy = players[msg.sender].energy;
+        require(energy > 0, "no energy left");
+        players[msg.sender].energy = 0;
+        players[msg.sender].inDungeon = false;
+        msg.sender.transfer(energy);
+    }
+
+    // TODO add Events for Delegates
+    function addDelegate(address payable _delegate) public payable {
+        require(msg.value == MIN_BALANCE);
+        _addDelegate(_delegate);
+    }
+    function _addDelegate(address payable _delegate) public payable {
+        require(_delegate != address(0), "no zero address delegate");
+        delegates[_delegate] = msg.sender;
+        _delegate.transfer(MIN_BALANCE);
+    }
+    function removeDelegate(address _delegate) public {
+        delegates[_delegate] = address(0);
     }
 
     function start(uint64 blockNumber, bytes32 blockHash) external {
@@ -184,9 +256,9 @@ contract Dungeon {
         }
     }
 
-    function move(uint8 direction) external {
+    function move(address payable sender, uint8 direction) external withCorrectSender(sender) {
         actualiseBlock(stats.blockToActualise);
-        Player storage player = players[msg.sender];
+        Player storage player = players[sender];
         uint256 oldLocation = player.location;
         actualiseRoom(oldLocation);
         Room memory currentRoom = rooms[oldLocation]; // storage?
@@ -218,7 +290,7 @@ contract Dungeon {
                 stats.blockToActualise = 0;
                 actualiseRoom(newLocation);
             }
-            emit PlayerMoved(msg.sender, oldLocation, newLocation);
+            emit PlayerMoved(sender, oldLocation, newLocation);
         } else {
             revert("cant move this way");
         }
@@ -226,9 +298,11 @@ contract Dungeon {
 
 
     ///////////////// GETTERS ///////////////// 
-    function getPlayer(address playerAddress) external view returns(uint256 location) {
+    function getPlayer(address playerAddress) external view returns(uint256 location, uint256 energy, bool inDungeon) {
         Player storage player = players[playerAddress];
         location = player.location;
+        energy = player.energy;
+        inDungeon = player.inDungeon;
     }
 
 

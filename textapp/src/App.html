@@ -1,20 +1,53 @@
 {#await $loading}
-	<p>Loading ...</p>
+	<LoadingScreen/>
 {:then answer}
-	<Room/>
-	<hr/>
-	<Adventurer/>
+	{#if $playerInDungeon}
+		{#if $newAddress}
+			<WelcomeBackScreen/>
+		{:else}
+			{#if $playerEnergy > 0}
+				<GameScreen/>
+			{:else}
+				<RefillScreen/>
+			{/if}
+		{/if}
+	{:else}
+		<EnterScreen/>
+	{/if}
+	
 {:catch error}
-	<p>well that's odd : {error}</p>
+	<ErrorScreen error={error}/>
 {/await}
 
 <script>
-	import Room from './components/Room.html';
-	import Adventurer from './components/Adventurer.html';
+	//if no delegate locally
+        // if (energy > 0 || player moved)
+            // welcome back
+            // generate new delegate
+            // if (energy == 0) // exec join with new delegate and 5$
+            // if (energy > 0) // exec addDelegate() with MIN_BALANCE value
+        // else
+            // generate new delegate 
+            // first welcome
+    // if delegate locally
+        // show game state
+        // if(energy == 0) // exec refill
+		// if(energy > 0) // nothing to do
+		
+	import GameScreen from './screens/GameScreen.html';
+	import LoadingScreen from './screens/LoadingScreen.html';
+	import ErrorScreen from './screens/ErrorScreen.html';
+	import EnterScreen from './screens/EnterScreen.html';
+	import WelcomeBackScreen from './screens/WelcomeBackScreen.html';
+	import RefillScreen from './screens/RefillScreen.html';
 	export default {
 		components: {
-			Room,
-			Adventurer
+			GameScreen,
+			LoadingScreen,
+			ErrorScreen,
+			EnterScreen,
+			WelcomeBackScreen,
+			RefillScreen,
 		}
 	};
 </script>

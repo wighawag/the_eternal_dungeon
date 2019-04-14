@@ -19,12 +19,42 @@ async function loadData() {
 	const web3 = await loadWeb3();
 	const chainId = await web3.eth.net.getId();
 	const accounts = await web3.eth.getAccounts();
-	
+
+	const player = accounts[0];
+	console.log({player});
+
+	let newAddress = false;
+	let key = localStorage.getItem(player); // TODO on accounts changed, need to reset // easiest solution : reload page on account change
+	if(!key) {
+		newAddress = true;
+		key = generateRandomKey();
+		try {
+			localStorage.setItem(player, key);
+		} catch(e) {
+			console.error('could not save to storage');
+		}
+		// TODO remove
+		console.log('new key', key);
+	} else {
+		// TODO remove
+		console.log('resuse', key);
+	}
+	const delegateAccount = web3.eth.accounts.privateKeyToAccount(key);
+
 	const dungeon = new Dungeon(web3.currentProvider, DungeonInfo.address, DungeonInfo.contractInfo.abi, {
         logLevel: 'trace',
-        blockInterval: 12
+		blockInterval: 12,
     });
-	await dungeon.init(accounts[0]);
+	await dungeon.init(player, delegateAccount.address);  // TODO on accounts changed, need to reset // easiest solution : reload page on account change
+
+	if(!dungeon.isCurrentDelegate) { //  TODO : || balance < MIN_BALANCE
+		newAddress = true;
+	}
+
+	const playerEnergy = dungeon.energy;
+	const playerInDungeon = dungeon.inDungeon;
+
+	console.log({playerEnergy, playerInDungeon, newAddress});
 
 	// TODO remove
 	window.dungeon = dungeon;
@@ -36,6 +66,9 @@ async function loadData() {
 	const balance = await web3.eth.getBalance(accounts[0]);
 
 	return {
+		playerEnergy,
+		playerInDungeon,
+		newAddress,
 		balance,
 		web3,
 		chainId,
@@ -45,19 +78,50 @@ async function loadData() {
 	}
 }
 
+// dec2hex :: Integer -> String
+// i.e. 0-255 -> '00'-'ff'
+function dec2hex (dec) {
+	return ('0' + dec.toString(16)).substr(-2)
+  }
+  
+  // generateRandomKey :: Void -> String
+  function generateRandomKey () {
+	var arr = new Uint8Array(32);
+	crypto.getRandomValues(arr);
+	return Array.from(arr, dec2hex).join('')
+  }
+  
+
 var loading = new Promise((resolve, reject) => {
 	window.addEventListener('load', async () => {
 		try{
 			const data = await loadData();
 			// store.set({eth: loadETH})
 			store.set(data);
-			
+
 			data.dungeon.on('playerMoved', (newLocation) => {
 				console.log('Player moved to ' + newLocation);
 				store.set({playerLocation: newLocation});
 			})
+			data.dungeon.on('playerEntered', () => {
+				console.log('Player entered');
+				store.set({playerInDungeon: true});
+			})
+			data.dungeon.on('playerQuit', () => {
+				console.log('Player quit');
+				store.set({playerInDungeon: false});
+			})
+			data.dungeon.on('energyChanged', (energy) => {
+				console.log('Energy changed');
+				store.set({playerEnergy: energy});
+			})
+			data.dungeon.on('delegated', (delegated) => {
+				console.log('delegated');
+				store.set({newAddress: false});
+			})
 			resolve();	
 		} catch(e) {
+			console.error(e);
 			reject(e);
 		}
 	});	

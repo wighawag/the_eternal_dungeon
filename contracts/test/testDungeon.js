@@ -58,7 +58,7 @@ tap.test('Dungeon', async(t) => {
             blockInterval: 0.1,
             logLevel: 'debug',
         });
-        await dungeon.start(dungeonOwner).then(waitReceipt);
+        // already done as part of stage : await dungeon.start(dungeonOwner).then(waitReceipt);
         await dungeon.init(users[0]);
     });
 
