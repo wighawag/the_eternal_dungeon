@@ -14,7 +14,8 @@ sendTx,
 waitReceipt,
 getBlockNumber,
 getBlock,
-soliditySha3;
+soliditySha3,
+privateKeyToAccount;
 const gas = 4000000; // TODO per method
 
 const Dungeon = function(provider, address, abi, options) {
@@ -52,6 +53,7 @@ const Dungeon = function(provider, address, abi, options) {
     getBlock = utils.getBlock;
     getBlockNumber = utils.getBlockNumber;
     soliditySha3 = utils.soliditySha3;
+    privateKeyToAccount = utils.privateKeyToAccount;
 
     this.contract = instantiateContract(address, abi);
 }
@@ -160,7 +162,7 @@ Dungeon.prototype.cancelInit = async function() {
     this._trace('canceled');
 }
 
-Dungeon.prototype.init = async function(player, delegate) { // TODO return same promise if any whenthis.player == new player
+Dungeon.prototype.init = async function(player, delegatePrivateKey) { // TODO return same promise if any whenthis.player == new player
     if(this.initializating) {
         await this.cancelInit();
     }
@@ -168,7 +170,8 @@ Dungeon.prototype.init = async function(player, delegate) { // TODO return same 
     this.initializating = true;
 
     this.player = player;
-    this.delegate = delegate;
+    this.delegatePrivateKey = delegatePrivateKey;
+    this.delegate = privateKeyToAccount(delegatePrivateKey).address;
     await this._stopListening();
     this.playerLocation = null;
     this.rooms = {};
@@ -507,7 +510,7 @@ Dungeon.prototype._stopListening = async function() {
 
 
 Dungeon.prototype.move = async function(direction) {
-    return sendTx({from: this.player, gas}, this.contract, 'move', this.player, direction);
+    return sendTx({gas, privateKey: this.delegatePrivateKey}, this.contract, 'move', this.player, direction);
 }
 
 Dungeon.prototype.join = async function() {

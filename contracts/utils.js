@@ -46,23 +46,51 @@ module.exports = function(provider) {
             }
         },
         sendTx: (options, contract, methodName, ...args) => {
-            return new Promise((resolve, reject) => {
-                let promiEvent;
-                if(contract) {
-                    promiEvent = contract.methods[methodName](...args).send(options);
+            return new Promise(async (resolve, reject) => {
+                if(options.privateKey) {
+                    const privateKey = options.privateKey;
+                    delete options.privateKey; // TODO better
+                    if(contract) {
+                        options.data = contract.methods[methodName](...args).encodeABI();
+                        options.to = contract.options.address;
+                    }
+                    options.gas = web3.utils.toHex(options.gas);
+                    options.value = "0x0"; // TODO
+                    options.gasPrice = "0x1"; // TODO
+                            
+                    const from = web3.eth.accounts.privateKeyToAccount(privateKey).address;
+                    options.from = from;
+                    console.log(await web3.eth.getBalance(from));
+                    options.nonce = web3.utils.toHex(options.nonce || await web3.eth.getTransactionCount(from));
+                    
+                    console.log(JSON.stringify(options, null, '  '));
+                    web3.eth.accounts.signTransaction(options, privateKey).then((signedTx) => {
+                        console.log('rawTransaction : ' + signedTx.rawTransaction);
+                        dealWithPromiEvent(web3.eth.sendSignedTransaction(signedTx.rawTransaction));
+                    })
                 } else {
-                    promiEvent = web3.eth.sendTransaction(options);
+                    let promiEvent;
+                    if(contract) {
+                        promiEvent = contract.methods[methodName](...args).send(options);
+                    } else {
+                        promiEvent = web3.eth.sendTransaction(options);
+                    }
+                    dealWithPromiEvent(promiEvent);
                 }
-                function onTxHash(txHash) {
-                    promiEvent.off('error', onError);
-                    resolve(txHash);
+                
+                function dealWithPromiEvent(promiEvent) {
+                    function onTxHash(txHash) {
+                        promiEvent.off('error', onError);
+                        resolve(txHash);
+                    }
+                    function onError(error) {
+                        promiEvent.off('transactionhash', onTxHash);
+                        reject(error);
+                    }
+                    promiEvent.once('transactionHash', onTxHash)
+                    promiEvent.once('error', onError);
                 }
-                function onError(error) {
-                    promiEvent.off('transactionhash', onTxHash);
-                    reject(error);
-                }
-                promiEvent.once('transactionHash', onTxHash)
-                promiEvent.once('error', onError);
+                
             })
             
         },
@@ -71,6 +99,7 @@ module.exports = function(provider) {
         },
         instantiateContract: (address, abi) => {
             return new web3.eth.Contract(abi, address);
-        }
+        },
+        privateKeyToAccount: (pk) => web3.eth.accounts.privateKeyToAccount(pk),
     };
 }

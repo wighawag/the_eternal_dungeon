@@ -49,11 +49,11 @@ contract Dungeon {
         owner = _owner;
     }
 
-    modifier withCorrectSender(address payable sender) {
+    modifier withCorrectSender(address sender) {
         if(msg.sender != sender) {
             require(delegates[msg.sender] == sender);
-            if(MIN_BALANCE > sender.balance) {
-                uint256 balanceToGive = MIN_BALANCE - sender.balance; // TODO consider gasleft()
+            if(msg.sender.balance < MIN_BALANCE) {
+                uint256 balanceToGive = MIN_BALANCE - msg.sender.balance; // TODO consider gasleft()
                 Player storage player = players[sender];
                 uint256 energy = player.energy;
                 if(balanceToGive > energy) {
@@ -61,7 +61,7 @@ contract Dungeon {
                 }
                 if(balanceToGive  > 0) {
                     player.energy = energy - balanceToGive;
-                    sender.transfer(balanceToGive);
+                    msg.sender.transfer(balanceToGive);
                 }
             }
         }
@@ -256,7 +256,7 @@ contract Dungeon {
         }
     }
 
-    function move(address payable sender, uint8 direction) external withCorrectSender(sender) {
+    function move(address sender, uint8 direction) external withCorrectSender(sender) {
         actualiseBlock(stats.blockToActualise);
         Player storage player = players[sender];
         uint256 oldLocation = player.location;

@@ -39,13 +39,12 @@ async function loadData() {
 		// TODO remove
 		console.log('resuse', key);
 	}
-	const delegateAccount = web3.eth.accounts.privateKeyToAccount(key);
-
+	
 	const dungeon = new Dungeon(web3.currentProvider, DungeonInfo.address, DungeonInfo.contractInfo.abi, {
         logLevel: 'trace',
 		blockInterval: 12,
     });
-	await dungeon.init(player, delegateAccount.address);  // TODO on accounts changed, need to reset // easiest solution : reload page on account change
+	await dungeon.init(player, key);  // TODO on accounts changed, need to reset // easiest solution : reload page on account change
 
 	if(!dungeon.isCurrentDelegate) { //  TODO : || balance < MIN_BALANCE
 		newAddress = true;
