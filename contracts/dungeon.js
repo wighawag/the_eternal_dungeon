@@ -339,6 +339,9 @@ Dungeon.prototype._startListening = async function() {
         try{
             const latestBlock = await getBlockNumber(); // TODO get the hash for reorg detection
             let newPlayerLocation = false;
+            let inDungeonChanged = false;
+            let energyChanged = false;
+            let delegatedChanged = false;
             const roomsAdded = [];
             const roomsRemoved = [];
             if(latestBlock > this.lastBlock) {
@@ -350,17 +353,29 @@ Dungeon.prototype._startListening = async function() {
                     newState.rooms[roomLocation] = this.rooms[roomLocation];
                 }
 
-                const events = await this.getPastEvents('PlayerMoved', {
-                    filter:{
-                        player: this.player
-                    },
-                    fromBlock: this.lastBlock+1,
-                    toBlock: latestBlock,
-                })
-                if(events.length > 0) {
+                // const events = await this.getPastEvents('PlayerMoved', {
+                //     filter:{
+                //         player: this.player
+                //     },
+                //     fromBlock: this.lastBlock+1,
+                //     toBlock: latestBlock,
+                // })
+                // if(events.length > 0) {
                     
-                    const latestEvent = events[events.length-1];
-                    newState.playerLocation = latestEvent.returnValues.newLocation;
+                //     const latestEvent = events[events.length-1];
+                //     newState.playerLocation = latestEvent.returnValues.newLocation;
+                //     this._info('PlayerMoved', newState.playerLocation);
+                //     newPlayerLocation = true;
+                //     await this._fetchRoomsAround(newState.playerLocation, newState.rooms, {
+                //         fromBlock: 0,
+                //         toBlock: latestBlock
+                //     });
+                // }
+
+                const playerData = await this.fetchPlayer(latestBlock);
+                console.log(playerData);
+                if(playerData.location != this.playerLocation) {
+                    newState.playerLocation = playerData.location;
                     this._info('PlayerMoved', newState.playerLocation);
                     newPlayerLocation = true;
                     await this._fetchRoomsAround(newState.playerLocation, newState.rooms, {
@@ -369,6 +384,21 @@ Dungeon.prototype._startListening = async function() {
                     });
                 }
 
+                if(playerData.energy != this.energy) {
+                    energyChanged = true;
+                    newState.energy = playerData.energy;
+                }
+
+                if(playerData.inDungeon != this.inDungeon) {
+                    inDungeonChanged = true;
+                    newState.inDungeon = playerData.inDungeon;
+                }
+
+                newState.isCurrentDelegate = await this.fetchIsDelegate();
+                if(newState.isCurrentDelegate != this.isCurrentDelegate) {
+                    delegatedChanged = true;
+                }
+            
                 for(let roomLocation of Object.keys(newState.rooms)) {
                     const room = newState.rooms[roomLocation];
                     if(room.status == 'listening') {
@@ -418,6 +448,9 @@ Dungeon.prototype._startListening = async function() {
                 this.lastBlock = latestBlock;
                 this.playerLocation = newState.playerLocation;
                 this.rooms = newState.rooms;
+                this.energy = newState.energy;
+                this.inDungeon = newState.inDungeon;
+                this.isCurrentDelegate = newState.isCurrentDelegate;
 
                 
                 for(let room of roomsRemoved) {
@@ -429,6 +462,19 @@ Dungeon.prototype._startListening = async function() {
 
                 if(newPlayerLocation) {
                     this._emit('playerMoved', this.playerLocation);
+                }
+
+                if(energyChanged) {
+                    this._emit('energyChanged', this.energy);
+                }
+
+                if(inDungeonChanged) {
+                    this._emit(this.inDungeon ? 'playerEntered' : 'playerQuit');
+                }
+
+                if(delegatedChanged) {
+                    // TODO new / not new
+                    this._emit('delegated', this.delegate);
                 }
 
                 this._emit('block', this.lastBlock);

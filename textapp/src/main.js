@@ -115,7 +115,7 @@ var loading = new Promise((resolve, reject) => {
 				console.log('Energy changed');
 				store.set({playerEnergy: energy});
 			})
-			data.dungeon.on('delegated', (delegated) => {
+			data.dungeon.on('delegated', (delegate) => {
 				console.log('delegated');
 				store.set({newAddress: false});
 			})
