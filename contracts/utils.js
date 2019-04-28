@@ -27,7 +27,7 @@ module.exports = function(provider) {
         tx: (options, contract, methodName, ...args) => {
             return contract.methods[methodName](...args).send(options);
         },
-        waitReceipt: async (txHash, token, interval) => {
+        waitReceipt: async (txHash, token, interval) => { // TODO rename to waitMiningReceipt
             if(!interval) {
                 interval = 5; // TODO config
             }
