@@ -32,7 +32,16 @@ function update(now) {
     if( i == 0) {
         currentText = null;
     } else {
-        currentText = stageText.slice(0, i);
+        let lastWordCharCount = 0;
+        for(let j = i; j < stageText.length; j++) {
+            const lastChar = stageText.charAt(j);
+            if(lastChar == "\n" || lastChar == " ") {
+                break;
+            }
+            lastWordCharCount++;
+        }
+        
+        currentText = stageText.slice(0, i) + '\u00A0'.repeat(lastWordCharCount);
     }
     
     if(!nomoretextDispatched && index == texts.length-1 && (now - startTime > duration || paused)) {

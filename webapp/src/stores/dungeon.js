@@ -126,10 +126,10 @@ export const choices = derived([dungeon, playerLocation], ([$dungeon, $playerLoc
             }
         }
         const allExits = $dungeon.allExitsFor(room);
-        if(allExits.north) { choices.push({name:'Go North', perform: move(0)}); }
-        if(allExits.east) { choices.push({name:'Go East', perform: move(1)}); }
-        if(allExits.south) { choices.push({name:'Go South', perform: move(2)}); }
-        if(allExits.west) { choices.push({name:'Go West', perform: move(3)}); }
+        if(allExits.north) { choices.push({type: 'north', name:'Go North', perform: move(0)}); }
+        if(allExits.east) { choices.push({type: 'east', name:'Go East', perform: move(1)}); }
+        if(allExits.south) { choices.push({type: 'south', name:'Go South', perform: move(2)}); }
+        if(allExits.west) { choices.push({type: 'west', name:'Go West', perform: move(3)}); }
         set(choices);
     }
 }, []);
