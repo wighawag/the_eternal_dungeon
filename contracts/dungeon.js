@@ -44,6 +44,7 @@ const Dungeon = function(provider, address, abi, options) {
 
     // INITIALISE utils
     utils = require('./utils')(provider);
+    this.utils = utils;
     instantiateContract = utils.instantiateContract;
     tx = utils.tx;
     sendTx = utils.sendTx;

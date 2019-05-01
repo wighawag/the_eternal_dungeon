@@ -55,8 +55,6 @@ module.exports = function(provider) {
                         options.to = contract.options.address;
                     }
                     options.gas = web3.utils.toHex(options.gas);
-                    options.value = "0x0"; // TODO
-                    options.gasPrice = "0x1"; // TODO
                             
                     const from = web3.eth.accounts.privateKeyToAccount(privateKey).address;
                     options.from = from;

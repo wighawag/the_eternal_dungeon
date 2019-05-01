@@ -23,7 +23,7 @@
 <!-- <p>{$dungeon}</p> -->
 <!-- <p>{$playerLocation}</p> -->
 
-{#if $dungeon}
+{#if $dungeon && $dungeon != "loading"}
 	{#if $playerInDungeon}
 		{#if $newAddress}
 			<WelcomeBackScreen/>

@@ -17,7 +17,6 @@ function generateRandomKey () {
 	return Array.from(arr, dec2hex).join('')
 }
 
-
 function loadWeb3() {
 	if (window.ethereum) {
 		return ethereum.enable().then(() => new Web3(window.ethereum));
@@ -71,7 +70,7 @@ export const dungeon = readable(null, function start(set) {
 			set(dungeon);
 		} catch(e) {
 			console.error(e);
-			set(JSON.stringify({error:e}));
+			set({error:e});
 		}
 	});	
 });
@@ -121,9 +120,9 @@ export const choices = derived([dungeon, playerLocation], ([$dungeon, $playerLoc
         console.log(room);
         const choices = [];
         function move(direction) {
-            return async function() {
+            return function() {
                 console.log('moving towards ' + direction);
-                await $dungeon.move(direction);
+                return $dungeon.move(direction);
             }
         }
         const allExits = $dungeon.allExitsFor(room);
