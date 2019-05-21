@@ -519,7 +519,7 @@ Dungeon.prototype.join = async function() {
 }
 
 Dungeon.prototype.addDelegate = async function() {
-    return sendTx({from: this.player, gas, value: "5000000000000000"}, this.contract, 'addDelegate', this.delegate);
+    return sendTx({from: this.player, gas /*, value: "5000000000000000"*/}, this.contract, 'addDelegate', this.delegate);
 }
 
 Dungeon.prototype.getPastEvents = function(eventName, options) {

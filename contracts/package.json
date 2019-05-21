@@ -4,7 +4,8 @@
   "main": "index.js",
   "license": "MIT",
   "scripts": {
-    "test": "rocketh launch tap -T test/**/test*"
+    "test": "rocketh launch tap -T test/**/test*",
+    "dev": "rocketh launch -k test_deployments"
   },
   "dependencies": {
     "@parity/light.js": "^5.1.1",

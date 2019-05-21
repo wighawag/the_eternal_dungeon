@@ -1,0 +1,1 @@
+<p>Please accept our conenction request...</p>

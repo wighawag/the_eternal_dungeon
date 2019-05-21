@@ -1,7 +1,7 @@
 <script>
 import TypeWriterText from './TypeWriterText.svelte';
 import {pause} from '../utils/time';
-import { room_description, choices, dungeon  } from '../stores/dungeon';
+import { room_description, choices, dungeon, directions  } from '../stores/dungeon';
 import { typewriter } from '../transitions';
 import { room_to_room } from '../db'
 const utils = $dungeon.utils;
@@ -16,6 +16,17 @@ async function performChoice(choice) {
     roomStage = 0;
     text_while_moving();
     const receipt = await choice.perform().then(utils.waitReceipt);
+    await $dungeon.once('block', (block) => block >= receipt.blockNumber);
+    console.log('done', receipt);
+    moving = false;
+}
+
+async function move(direction) {
+    moving = true;
+    room_described = false;
+    roomStage = 0;
+    text_while_moving();
+    const receipt = await $dungeon.move(direction).then(utils.waitReceipt);
     await $dungeon.once('block', (block) => block >= receipt.blockNumber);
     console.log('done', receipt);
     moving = false;
@@ -43,6 +54,24 @@ async function text_while_moving() {
 .footer {
   flex-shrink: 0;
 }
+table {
+  table-layout: fixed;
+  width: 100%;
+  /* height: 100%; */
+  border-collapse: collapse;
+  border: 3px solid purple;
+}
+td {
+    border: 3px solid red;
+}
+td > div {
+    overflow: hidden;
+    height: 50px;
+    text-align: center;
+}
+tr {
+    border: 3px solid green;
+}
 </style>
 
 <div class="content">
@@ -63,38 +92,70 @@ async function text_while_moving() {
 </div>
 
 <div class="footer">
-<hr/>
-{#if !moving && moving_texts == null}
-    {#if room_described}
-        <h3>What do you do ?</h3>
-        <p>
-        {#if $choices} <!-- action player can make , nove north, attack monsters, open chest ... -->
-            {#each $choices as choice}
-                <button disabled={moving} on:click="{() => performChoice(choice)}" >{choice.name}</button>
-            {:else}
-                You are stuck.
-            {/each}
-        {/if}
-        </p>
-    {:else}
-        <h3>&nbsp;</h3>
-        <p>
-        <button on:click="{() => roomStage++}" >skip</button>        
-        </p>
-    {/if}
-{:else if moving_texts != null}
-    <h3>&nbsp;</h3>
-    <p>
-    {#if currentStage % 2 ==0}
-        <button on:click="{() => currentStage++}" >skip</button>
-    {:else}
-        <button on:click="{() => currentStage++}" >next</button>
-    {/if}
-    </p>
-{:else}
-<h3>&nbsp;</h3>
-<p>
-        <button style="visibility: hidden" >next</button>
-</p>
-{/if}
+    <hr/>
+    <h3 style="visibility:{($directions && !moving && moving_texts == null && room_described)?'visible':'hidden'}">What do you do ?</h3>
+    <table style="visibility:{$directions?'visible':'hidden'}">
+        <tr>
+            <td><div></div></td>
+            <td><div></div></td>
+            <td><div></div></td>
+            <td><div></div></td>
+            <td>
+            <div>
+                {#if $directions && !moving && moving_texts == null && room_described}
+                <button disabled={moving || !$directions.north} on:click="{() => move(0)}" >North</button> 
+                {/if}
+            </div>
+            </td>
+            <td><div></div></td>
+        </tr>
+        <tr>
+            <td><div></div></td>
+            <td><div></div></td>
+            <td><div></div></td>
+            <td>
+            <div>
+                {#if $directions && !moving && moving_texts == null && room_described}
+                <button disabled={moving || !$directions.west} on:click="{() => move(3)}" >West</button>
+                {/if}
+            </div>
+            </td>
+            <td><div></div></td> 
+            <td>
+            <div>
+                {#if $directions && !moving && moving_texts == null && room_described}
+                <button disabled={moving || !$directions.east} on:click="{() => move(1)}" >East</button>
+                {/if}
+            </div>
+            </td>
+        </tr>
+        <tr>
+            <td><div></div></td>
+            <td><div></div></td>
+            <td><div></div></td>
+            <td><div></div></td>
+            <td>
+            <div>
+                {#if $directions && !moving && moving_texts == null && room_described}
+                <button disabled={moving || !$directions.south} on:click="{() => move(2)}" >South</button>
+                {/if}
+            </div>
+            </td>
+            <td>
+            <div>
+                {#if !moving && moving_texts == null && !room_described}
+                    <button on:click="{() => roomStage++}" >skip</button>
+                {/if}
+                
+                {#if moving_texts != null}
+                    {#if currentStage % 2 ==0}
+                        <button on:click="{() => currentStage++}" >skip</button>
+                    {:else}
+                        <button on:click="{() => currentStage++}" >next</button>
+                    {/if}
+                {/if}
+            </div>
+            </td>
+        </tr>
+    </table>
 </div>

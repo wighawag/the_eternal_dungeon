@@ -35,7 +35,7 @@ function update(now) {
         let lastWordCharCount = 0;
         for(let j = i; j < stageText.length; j++) {
             const lastChar = stageText.charAt(j);
-            if(lastChar == "\n" || lastChar == " ") {
+            if(lastChar == "\n" || lastChar == " ") { // TODO other breakable word / characters...
                 break;
             }
             lastWordCharCount++;

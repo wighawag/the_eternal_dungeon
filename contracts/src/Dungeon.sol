@@ -104,13 +104,18 @@ contract Dungeon {
 
     // TODO add Events for Delegates
     function addDelegate(address payable _delegate) public payable {
-        require(msg.value == MIN_BALANCE);
+        require(players[msg.sender].inDungeon, "not in dungeon");
+        if(msg.value > 0) {
+            _refill(msg.value);
+        }
         _addDelegate(_delegate);
     }
     function _addDelegate(address payable _delegate) public payable {
         require(_delegate != address(0), "no zero address delegate");
-        delegates[_delegate] = msg.sender;
+        require(players[msg.sender].energy >= MIN_BALANCE, "not enought energy");
+        players[msg.sender].energy -= MIN_BALANCE;
         _delegate.transfer(MIN_BALANCE);
+        delegates[_delegate] = msg.sender;
     }
     function removeDelegate(address _delegate) public {
         delegates[_delegate] = address(0);

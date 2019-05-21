@@ -1,10 +1,17 @@
 <script>
 import { dungeon } from '../stores/dungeon.js';
-function addDelegate() {
-    $dungeon.addDelegate();
+const utils = $dungeon.utils;
+let addingDelegate = false;
+async function addDelegate() {
+    try{
+        addingDelegate = true;
+        await $dungeon.addDelegate().then(utils.waitReceipt);
+    } catch(e) {
+        addingDelegate = false;
+    }
 }
 </script>
 
 <p>Welcone Back!</p>
 
-<button on:click="{addDelegate}" >Sign in</button>
+<button disabled={addingDelegate} on:click="{addDelegate}" >Sign Back In</button>
