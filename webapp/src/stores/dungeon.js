@@ -19,6 +19,7 @@ function generateRandomKey () {
 }
 
 async function loadWeb3Status() {
+	//console.log('loading web3 status...');
 	let provider;
 	if (window.ethereum) {
 		provider = window.ethereum;
@@ -32,8 +33,10 @@ async function loadWeb3Status() {
 		}
 	}
 	const web3 = new Web3(provider);
+	window.web3 = web3;
 	const accounts = await web3.eth.getAccounts();
 	if(accounts && accounts.length > 0) {
+		//console.log('accounts available : ' + accounts[0]);
 		return {
 			available: true,
 			enabled: true,
@@ -41,6 +44,7 @@ async function loadWeb3Status() {
 			web3,
 		}
 	}
+	//console.log('account not available');
 	return {
 		available: true,
 		enabled: false,
@@ -54,6 +58,7 @@ export const web3Status = (() => {
 
 	set("loading");
     window.addEventListener('load', async () => {
+		//console.log('page loaded');
 		try{
             $web3Status = await loadWeb3Status();
 			set($web3Status);
@@ -61,31 +66,51 @@ export const web3Status = (() => {
 				dungeon.load();
 			}
 		} catch(e) {
-			console.error(e);
+			// TODO remove and ensure ti never reach there
+			console.error('LOAD STATUS ERROR', e);
 			set({error:e});
 		}
 	});	
 
     async function enable() {
 		try{
+			//console.log('enabling');
 			$web3Status.enabling = true;
-			let accounts = await web3.currentProvider.enable();
-			if(!accounts) {
-				accounts = await web3.eth.getAccounts();
+			set($web3Status); // TODO set({enabling:true});
+			let accounts = await web3.eth.getAccounts();
+			//console.log('getAccounts', accounts);
+			if(!accounts || accounts.length == 0) {	
+				try{
+					accounts = await web3.currentProvider.enable();
+					//console.log('enable', accounts);
+				} catch(e) {
+					//console.log('enable rejection');
+				}
+				
+				// Metamask no privacy allow you to fetch account here even though the user did not enable
+				if(!accounts || accounts.length == 0) {
+					//console.log('no accounts, fetching...');
+					const testAccounts = await web3.eth.getAccounts();
+					//console.log('getAccounts again', testAccounts);
+					accounts = testAccounts; // TODO remove ?
+				}
 			}
+			
 			if(accounts && accounts.length > 0) {
+				//console.log('enabled account : ' + accounts[0]);
 				$web3Status.enabled = true;
 				$web3Status.account = accounts[0];
 			} else {
-				console.log('something wrong');
-				// $web3Status.enabled = true;
+				//console.log('not enabled');
+				$web3Status.enabled = false;
 			}
 			$web3Status.enabling = false;
-			set($web3Status);
 		} catch(e) {
+			console.error('ENABLING ERROR', e);
 			$web3Status.enabling = false;
-			throw new Error("not enabled");
+			// throw new Error("not enabled");
 		}
+		set($web3Status);
     }
     return { enable, subscribe };
 })()
