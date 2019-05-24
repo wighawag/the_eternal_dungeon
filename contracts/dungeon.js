@@ -199,7 +199,7 @@ Dungeon.prototype.init = async function(player, delegatePrivateKey) { // TODO re
     this._trace('initialized');
 }
 
-Dungeon.prototype._fetchRoomsAround = async function(centre, rooms, options)  {
+Dungeon.prototype._fetchRoomsAround = async function(centre, rooms, blockNumber)  {
     for(let dy = -1; dy <= 1; dy++) {
         for(let dx = -1; dx <= 1; dx++) {
             const location = Dungeon.locationAt(centre,dx,dy);
@@ -207,7 +207,7 @@ Dungeon.prototype._fetchRoomsAround = async function(centre, rooms, options)  {
             if(room){
                 continue;
             }
-            let fetchedRoom = await this.fetchRoom(location, options);
+            let fetchedRoom = await this.fetchRoom(location, blockNumber);
             if(!fetchedRoom) {
                 fetchedRoom = {
                     location,
@@ -357,35 +357,13 @@ Dungeon.prototype._startListening = async function() {
                     newState.rooms[roomLocation] = this.rooms[roomLocation];
                 }
 
-                // const events = await this.getPastEvents('PlayerMoved', {
-                //     filter:{
-                //         player: this.player
-                //     },
-                //     fromBlock: this.lastBlock+1,
-                //     toBlock: latestBlock,
-                // })
-                // if(events.length > 0) {
-                    
-                //     const latestEvent = events[events.length-1];
-                //     newState.playerLocation = latestEvent.returnValues.newLocation;
-                //     this._info('PlayerMoved', newState.playerLocation);
-                //     newPlayerLocation = true;
-                //     await this._fetchRoomsAround(newState.playerLocation, newState.rooms, {
-                //         fromBlock: 0,
-                //         toBlock: latestBlock
-                //     });
-                // }
-
                 const playerData = await this.fetchPlayer(latestBlock);
                 console.log(playerData);
                 if(playerData.location != this.playerLocation) {
                     newState.playerLocation = playerData.location;
                     this._info('PlayerMoved', newState.playerLocation);
                     newPlayerLocation = true;
-                    await this._fetchRoomsAround(newState.playerLocation, newState.rooms, {
-                        fromBlock: 0,
-                        toBlock: latestBlock
-                    });
+                    await this._fetchRoomsAround(newState.playerLocation, newState.rooms, latestBlock);
                 }
 
                 if(playerData.energy != this.energy) {
@@ -406,10 +384,7 @@ Dungeon.prototype._startListening = async function() {
                 for(let roomLocation of Object.keys(newState.rooms)) {
                     const room = newState.rooms[roomLocation];
                     if(room.status == 'listening') {
-                        const fetchedRoom = await this.fetchRoom(roomLocation, {
-                            fromBlock: this.lastBlock+1,
-                            toBlock: latestBlock,
-                        })
+                        const fetchedRoom = await this.fetchRoom(roomLocation, latestBlock)
                         if(fetchedRoom) {
                             newState.rooms[roomLocation] = fetchedRoom;
                         }
@@ -526,37 +501,22 @@ Dungeon.prototype.getPastEvents = function(eventName, options) {
    return getPastEvents(this.contract, eventName, options); 
 }
 
-Dungeon.prototype.fetchRoom = async function(location, options) {
+Dungeon.prototype.fetchRoom = async function(location, blockNumber) {
     let roomBlockHash;
-    
-    const discoveryEvents = await getPastEvents(this.contract, 'RoomDiscovered', {
-        fromBlock: options.fromBlock,
-        toBlock: options.toBlock,
-        filter:{
-            location : location.toString ? location.toString(10) : location
-        }
-    });
-    if(discoveryEvents.length == 0) {
-        return null;
+
+    const roomData = await call({blockNumber}, this.contract, 'getRoom', location);
+    if(roomData.blockNumber == 0) {
+        return null; // not discovered
     }
-    const actualisationEvents = await getPastEvents(this.contract, 'RoomActualised', {
-        fromBlock:0,
-        toBlock: options.toBlock,
-        filter:{
-            location : location.toString ? location.toString(10) : location
-        }
-    });
-    const roomDiscovery = discoveryEvents[0].returnValues;
     let status = 'discovered';
-    if(actualisationEvents.length > 0) {
-        const roomActualisation = actualisationEvents[0].returnValues;
-        roomBlockHash = roomActualisation.blockHash;
+    if(roomData.kind != 0) {
+        roomBlockHash = await call({blockNumber}, this.contract, 'blockHashes', roomData.blockNumber);
         status = 'actualised';
     } else {
-        roomBlockHash = (await getBlock(roomDiscovery.blockNumber)).hash;
+        roomBlockHash = (await getBlock(roomData.blockNumber)).hash;
     }
     
-    return this.computeRoom(location, roomBlockHash, roomDiscovery.blockNumber, roomDiscovery.numRooms, roomDiscovery.numExits, status);
+    return this.computeRoom(location, roomBlockHash, roomData.blockNumber, roomData.numRooms, roomData.numExits, status);
 }
 
 Dungeon.prototype.generateExits = function(location, hash, numRoomsAtDiscovery, numExitsAtDiscovery) {

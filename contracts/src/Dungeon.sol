@@ -10,7 +10,7 @@ contract Dungeon {
 
     // uint256 roomToActualise;
     
-    mapping(uint256 => bytes32) blockHashes; // TODO use contract instead
+    mapping(uint256 => bytes32) public blockHashes; // TODO use contract instead
 /*
    0
 3     1
@@ -310,6 +310,14 @@ contract Dungeon {
         inDungeon = player.inDungeon;
     }
 
+    function getRoom(uint256 location) external view returns(uint256 blockNumber, uint8 exits, uint8 kind, uint256, uint64 numRooms, uint32 numExits){
+        Room storage room = rooms[location];
+        exits = room.exits;
+        kind = room.kind;
+        blockNumber = room.blockNumber;
+        numRooms = room.numRooms;
+        numExits = room.numExits;
+    }
 
     /////////////////////  DEBUG GETTERS //////////////// // TODO REMOVE
     function debug_room(uint256 location) external view returns(uint256 blockNumber, uint8 exits, uint8 kind, uint256, uint64 numRooms, uint32 numExits){

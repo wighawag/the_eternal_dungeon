@@ -99,8 +99,10 @@ tr {
     <table style="visibility:{$room?'visible':'hidden'}">
         <tr>
             <td colspan="2"><div>
-                {#if $room.scene.scenes && $room.scene.scenes.length > 0}
-                <button on:click="{() => console.log('act ', 0)}" >{$room.scene.scenes[0].name}</button> 
+                {#if $room && !moving && moving_texts == null && room_described}
+                    {#if $room.scene.scenes && $room.scene.scenes.length > 0}
+                    <button on:click="{() => console.log('act ', 0)}" >{$room.scene.scenes[0].name}</button> 
+                    {/if}
                 {/if}
             </div></td>
             <td><div></div></td>
@@ -118,8 +120,10 @@ tr {
         </tr>
         <tr>
             <td colspan="2"><div>
-                    {#if $room.scene.scenes && $room.scene.scenes.length > 0}
-                    <button on:click="{() => console.log('act ', 1)}" >{$room.scene.scenes[1].name}</button> 
+                    {#if $room && !moving && moving_texts == null && room_described}
+                        {#if $room.scene.scenes && $room.scene.scenes.length > 0}
+                        <button on:click="{() => console.log('act ', 1)}" >{$room.scene.scenes[1].name}</button> 
+                        {/if}
                     {/if}
                 </div></td>
             <td><div></div></td>
@@ -142,8 +146,10 @@ tr {
         </tr>
         <tr>
             <td colspan="2"><div>
-                    {#if $room.scene.scenes && $room.scene.scenes.length > 0}
-                    <button on:click="{() => console.log('act ', 2)}" >{$room.scene.scenes[2].name}</button> 
+                    {#if $room && !moving && moving_texts == null && room_described}
+                        {#if $room.scene.scenes && $room.scene.scenes.length > 0}
+                        <button on:click="{() => console.log('act ', 2)}" >{$room.scene.scenes[2].name}</button> 
+                        {/if}
                     {/if}
                 </div></td>
             <td><div></div></td>
