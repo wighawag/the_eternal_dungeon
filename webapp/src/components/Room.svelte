@@ -67,10 +67,12 @@ td {
 td > div {
     overflow: hidden;
     height: 50px;
-    text-align: center;
 }
 tr {
     border: 3px solid green;
+}
+.center {
+    text-align: center;
 }
 </style>
 
@@ -96,7 +98,7 @@ tr {
     <h3 style="visibility:{($room && !moving && moving_texts == null && room_described)?'visible':'hidden'}">What do you do ?</h3>
     <table style="visibility:{$room?'visible':'hidden'}">
         <tr>
-            <td><div>
+            <td colspan="2"><div>
                 {#if $room.scene.scenes && $room.scene.scenes.length > 0}
                 <button on:click="{() => console.log('act ', 0)}" >{$room.scene.scenes[0].name}</button> 
                 {/if}
@@ -106,7 +108,7 @@ tr {
             <td><div></div></td>
 
             <td>
-            <div>
+            <div class="center">
                 {#if $room && !moving && moving_texts == null && room_described}
                 <button disabled={moving || !$room.directions.north} on:click="{() => move(0)}" >North</button> 
                 {/if}
@@ -115,7 +117,7 @@ tr {
             <td><div></div></td>
         </tr>
         <tr>
-            <td><div>
+            <td colspan="2"><div>
                     {#if $room.scene.scenes && $room.scene.scenes.length > 0}
                     <button on:click="{() => console.log('act ', 1)}" >{$room.scene.scenes[1].name}</button> 
                     {/if}
@@ -123,7 +125,7 @@ tr {
             <td><div></div></td>
             <td><div></div></td>
             <td>
-            <div>
+            <div class="center">
                 {#if $room && !moving && moving_texts == null && room_described}
                 <button disabled={moving || !$room.directions.west} on:click="{() => move(3)}" >West</button>
                 {/if}
@@ -131,7 +133,7 @@ tr {
             </td>
             <td><div></div></td> 
             <td>
-            <div>
+            <div class="center">
                 {#if $room && !moving && moving_texts == null && room_described}
                 <button disabled={moving || !$room.directions.east} on:click="{() => move(1)}" >East</button>
                 {/if}
@@ -139,7 +141,7 @@ tr {
             </td>
         </tr>
         <tr>
-            <td><div>
+            <td colspan="2"><div>
                     {#if $room.scene.scenes && $room.scene.scenes.length > 0}
                     <button on:click="{() => console.log('act ', 2)}" >{$room.scene.scenes[2].name}</button> 
                     {/if}
@@ -148,14 +150,14 @@ tr {
             <td><div></div></td>
             <td><div></div></td>
             <td>
-            <div>
+            <div class="center">
                 {#if $room && !moving && moving_texts == null && room_described}
                 <button disabled={moving || !$room.directions.south} on:click="{() => move(2)}" >South</button>
                 {/if}
             </div>
             </td>
             <td>
-            <div>
+            <div class="center">
                 {#if !moving && moving_texts == null && !room_described}
                     {#if roomStage % 2 ==0}
                         <button on:click="{() => roomStage++}" >skip</button>
