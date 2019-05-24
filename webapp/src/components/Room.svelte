@@ -10,6 +10,8 @@ let moving_texts = null;
 let currentStage = 0;
 let room_described = false;
 let roomStage = 0;
+
+let currentScene = $room.scene;
 async function performChoice(choice) {
     moving = true;
     room_described = false;
@@ -19,6 +21,7 @@ async function performChoice(choice) {
     await $dungeon.once('block', (block) => block >= receipt.blockNumber);
     console.log('done', receipt);
     moving = false;
+    currentScene = $room.scene;
 }
 
 async function move(direction) {
@@ -30,6 +33,20 @@ async function move(direction) {
     await $dungeon.once('block', (block) => block >= receipt.blockNumber);
     console.log('done', receipt);
     moving = false;
+    currentScene = $room.scene;
+}
+
+let breadcrumb = [];
+async function readScene(scene) {
+    roomStage = 0;
+    breadcrumb.push(currentScene);
+    room_described = false;
+    currentScene = scene;
+}
+
+async function backScene(scene) {
+    roomStage = 999;
+    currentScene = breadcrumb.pop()
 }
 
 async function text_while_moving() {
@@ -85,7 +102,7 @@ tr {
         <!-- <p>...</p> -->
         <p in:typewriter="{{ charTime: 100 }}">..............................................................</p>
     {:else} 
-        <TypeWriterText texts={$room.scene.description} charTime=50 bind:stage={roomStage} on:nomoretext="{() => {room_described=true;}}"/>    
+        <TypeWriterText texts={currentScene.description} charTime=50 bind:stage={roomStage} on:nomoretext="{() => {room_described=true;}}"/>    
     <!-- <p>{$room.scene.description}</p>  -->
         <!-- <p in:typewriter>{$room.scene.description}</p>  -->
     {/if}
@@ -100,8 +117,8 @@ tr {
         <tr>
             <td colspan="2"><div>
                 {#if $room && !moving && moving_texts == null && room_described}
-                    {#if $room.scene.scenes && $room.scene.scenes.length > 0}
-                    <button on:click="{() => console.log('act ', 0)}" >{$room.scene.scenes[0].name}</button> 
+                    {#if currentScene.scenes && currentScene.scenes.length > 0}
+                    <button on:click="{() => readScene(currentScene.scenes[0])}" >{currentScene.scenes[0].name}</button> 
                     {/if}
                 {/if}
             </div></td>
@@ -111,7 +128,7 @@ tr {
 
             <td>
             <div class="center">
-                {#if $room && !moving && moving_texts == null && room_described}
+                {#if $room && currentScene == $room.scene && !moving && moving_texts == null && room_described}
                 <button disabled={moving || !$room.directions.north} on:click="{() => move(0)}" >North</button> 
                 {/if}
             </div>
@@ -121,8 +138,8 @@ tr {
         <tr>
             <td colspan="2"><div>
                     {#if $room && !moving && moving_texts == null && room_described}
-                        {#if $room.scene.scenes && $room.scene.scenes.length > 0}
-                        <button on:click="{() => console.log('act ', 1)}" >{$room.scene.scenes[1].name}</button> 
+                        {#if currentScene.scenes && currentScene.scenes.length > 1}
+                        <button on:click="{() => readScene(currentScene.scenes[1])}" >{currentScene.scenes[1].name}</button> 
                         {/if}
                     {/if}
                 </div></td>
@@ -130,7 +147,7 @@ tr {
             <td><div></div></td>
             <td>
             <div class="center">
-                {#if $room && !moving && moving_texts == null && room_described}
+                {#if $room && currentScene == $room.scene && !moving && moving_texts == null && room_described}
                 <button disabled={moving || !$room.directions.west} on:click="{() => move(3)}" >West</button>
                 {/if}
             </div>
@@ -138,7 +155,7 @@ tr {
             <td><div></div></td> 
             <td>
             <div class="center">
-                {#if $room && !moving && moving_texts == null && room_described}
+                {#if $room && currentScene == $room.scene && !moving && moving_texts == null && room_described}
                 <button disabled={moving || !$room.directions.east} on:click="{() => move(1)}" >East</button>
                 {/if}
             </div>
@@ -147,8 +164,8 @@ tr {
         <tr>
             <td colspan="2"><div>
                     {#if $room && !moving && moving_texts == null && room_described}
-                        {#if $room.scene.scenes && $room.scene.scenes.length > 0}
-                        <button on:click="{() => console.log('act ', 2)}" >{$room.scene.scenes[2].name}</button> 
+                        {#if currentScene.scenes && currentScene.scenes.length > 2}
+                        <button on:click="{() => readScene(currentScene.scenes[2])}" >{currentScene.scenes[2].name}</button> 
                         {/if}
                     {/if}
                 </div></td>
@@ -157,7 +174,7 @@ tr {
             <td><div></div></td>
             <td>
             <div class="center">
-                {#if $room && !moving && moving_texts == null && room_described}
+                {#if $room && currentScene == $room.scene && !moving && moving_texts == null && room_described}
                 <button disabled={moving || !$room.directions.south} on:click="{() => move(2)}" >South</button>
                 {/if}
             </div>
@@ -171,6 +188,10 @@ tr {
                         <button on:click="{() => roomStage++}" >next</button>
                     {/if}
                 {/if}
+
+                {#if !moving && room_described && currentScene != $room.scene}
+                    <button on:click="{() => backScene()}" >back</button>
+                {/if}
                 
                 {#if moving_texts != null}
                     {#if currentStage % 2 ==0}
@@ -179,6 +200,7 @@ tr {
                         <button on:click="{() => currentStage++}" >next</button>
                     {/if}
                 {/if}
+
             </div>
             </td>
         </tr>

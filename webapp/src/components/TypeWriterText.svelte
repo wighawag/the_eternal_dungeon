@@ -7,6 +7,7 @@ export let charTime = 50;
 export let done;
 export let stage = 0;
 
+let lastTexts
 let startTime;
 let index = 0;
 let currentText = null;
@@ -16,6 +17,21 @@ let lastStage = stage;
 let nomoretextDispatched = false;
 
 function update(now) {
+    if(lastTexts != texts) { // init
+        if(stage != 999) {
+            startTime = undefined;
+            index = 0;
+            paused = false;
+        } else {
+            index = texts.length -1;
+            paused = true;
+        }
+        
+        lastTexts = texts;
+        currentText = null;
+        lastStage = stage;
+        nomoretextDispatched = false;
+    }
     if(!startTime) {
         startTime = now;
     }

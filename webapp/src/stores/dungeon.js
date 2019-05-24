@@ -244,7 +244,7 @@ export const room = derived([dungeon, playerLocation, roomBlockUpdate], ([$dunge
 				scenes: [
 					{
 						name: 'look box',
-						description: 'The box is made of rock, there is what some sort of pressing mechanism',
+						description: ['The box is made of rock, there is what some sort of pressing mechanism'],
 						scenes: [
 							{
 								name: 'press mechanism',
@@ -258,17 +258,17 @@ export const room = derived([dungeon, playerLocation, roomBlockUpdate], ([$dunge
 					},
 					{
 						name: 'look statue',
-						description: 'The status is magnificient. it depicts a woman carrying in her a slate that she seems to read as one of her fingers touch it',
+						description: ['The status is magnificient. it depicts a woman carrying in her a slate that she seems to read as one of her fingers touch it'],
 						scenes: [
 							{
 								name: 'touch',
-								description: 'it feels cold'
+								description: ['it feels cold']
 							}
 						],
 					},
 					{
 						name: 'attack',
-						description: '<moving_text>',
+						description: ['<moving_text>'],
 						actionIndex: 1,
 					},
 				],
