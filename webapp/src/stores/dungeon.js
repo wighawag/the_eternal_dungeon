@@ -225,40 +225,93 @@ export const playerInDungeon = derived(dungeon, ($dungeon, set) => {
     }
 }, null);
 
-export const room_description = derived([dungeon, playerLocation], ([$dungeon, $playerLocation]) => {
-    if($playerLocation && $dungeon && !$dungeon.error) {
-        const hash = $dungeon.rooms[$playerLocation].hash;
-        return "Corpses lie all around you. A small fountain is at the center of the room. The smell make you want to vomit..";
-    }
-}, "");
+export const roomBlockUpdate = derived(dungeon, ($dungeon, set) => {
+	$dungeon.on('roomChanged', (block) => { set(block)}); // TODO roomChanged for new exits (from neighbor rooms)
+})
 
-export const directions = derived([dungeon, playerLocation], ([$dungeon, $playerLocation], set) => {
-    if($playerLocation && $dungeon && !$dungeon.error) {
-        console.log('computing room choices')
+export const room = derived([dungeon, playerLocation, roomBlockUpdate], ([$dungeon, $playerLocation, $roomBlockUpdate], set) => {
+	if($playerLocation && $dungeon && !$dungeon.error) {
 		const room = $dungeon.rooms[$playerLocation];
-        console.log(room);
         const $directions = $dungeon.allExitsFor(room);
-        set($directions);
-    }
-}, []);
+		// TODO
+		set({
+			scene: {
+				name: 'The hall',
+				description: [
+					'The room is quite big with an impressive cross arch on the ceiling. The walls are all white. In the middle stand a statue and in the corner, you can notice a sort of box.',
+					'exits ...'
+				],
+				scenes: [
+					{
+						name: 'look box',
+						description: 'The box is made of rock, there is what some sort of pressing mechanism',
+						scenes: [
+							{
+								name: 'press mechanism',
+								description: [
+									'As you press the mechanism, you feel underneath like something is moving',
+									'The box is opening...'
+								],
+								actionIndex: 0,
+							}
+						],
+					},
+					{
+						name: 'look statue',
+						description: 'The status is magnificient. it depicts a woman carrying in her a slate that she seems to read as one of her fingers touch it',
+						scenes: [
+							{
+								name: 'touch',
+								description: 'it feels cold'
+							}
+						],
+					},
+					{
+						name: 'attack',
+						description: '<moving_text>',
+						actionIndex: 1,
+					},
+				],
+			},
+			directions: $directions
+		});
+	}
+})
 
-export const choices = derived([dungeon, playerLocation], ([$dungeon, $playerLocation], set) => {
-    if($playerLocation && $dungeon && !$dungeon.error) {
-        // console.log('computing room choices')
-		// const room = $dungeon.rooms[$playerLocation];
-        // console.log(room);
-        // const choices = [];
-        // function move(direction) {
-        //     return function() {
-        //         console.log('moving towards ' + direction);
-        //         return $dungeon.move(direction);
-        //     }
-        // }
-        // const allExits = $dungeon.allExitsFor(room);
-        // if(allExits.north) { choices.push({type: 'north', name:'Go North', perform: move(0)}); }
-        // if(allExits.east) { choices.push({type: 'east', name:'Go East', perform: move(1)}); }
-        // if(allExits.south) { choices.push({type: 'south', name:'Go South', perform: move(2)}); }
-        // if(allExits.west) { choices.push({type: 'west', name:'Go West', perform: move(3)}); }
-        // set(choices);
-    }
-}, []);
+// export const room_description = derived([dungeon, playerLocation], ([$dungeon, $playerLocation]) => {
+//     if($playerLocation && $dungeon && !$dungeon.error) {
+//         const hash = $dungeon.rooms[$playerLocation].hash;
+//         return "Corpses lie all around you. A small fountain is at the center of the room. The smell make you want to vomit..";
+//     }
+// }, "");
+
+// export const directions = derived([dungeon, playerLocation], ([$dungeon, $playerLocation], set) => {
+//     if($playerLocation && $dungeon && !$dungeon.error) {
+//         console.log('computing room choices')
+// 		const room = $dungeon.rooms[$playerLocation];
+//         console.log(room);
+//         const $directions = $dungeon.allExitsFor(room);
+//         set($directions);
+//     }
+// }, []);
+
+// export const choices = derived([dungeon, playerLocation], ([$dungeon, $playerLocation], set) => {
+//     if($playerLocation && $dungeon && !$dungeon.error) {
+//         // console.log('computing room choices')
+// 		// const room = $dungeon.rooms[$playerLocation];
+//         // console.log(room);
+//         // const choices = [];
+//         // function move(direction) {
+//         //     return function() {
+//         //         console.log('moving towards ' + direction);
+//         //         return $dungeon.move(direction);
+//         //     }
+//         // }
+//         // const allExits = $dungeon.allExitsFor(room);
+//         // if(allExits.north) { choices.push({type: 'north', name:'Go North', perform: move(0)}); }
+//         // if(allExits.east) { choices.push({type: 'east', name:'Go East', perform: move(1)}); }
+//         // if(allExits.south) { choices.push({type: 'south', name:'Go South', perform: move(2)}); }
+//         // if(allExits.west) { choices.push({type: 'west', name:'Go West', perform: move(3)}); }
+//         // set(choices);
+//     }
+// }, []);
