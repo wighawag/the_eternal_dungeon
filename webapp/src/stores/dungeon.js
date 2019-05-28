@@ -4,6 +4,7 @@ import Dungeon from '../../../contracts/dungeon';
 import BN from 'bn.js';
 import DungeonInfo from '../../../contracts/test_deployments/Dungeon.json'
 import {pause} from '../utils/time';
+import NiftyGatewayJS from 'niftygateway';
 
 // dec2hex :: Integer -> String
 // i.e. 0-255 -> '00'-'ff'
@@ -60,7 +61,7 @@ export const web3Status = (() => {
     window.addEventListener('load', async () => {
 		//console.log('page loaded');
 		try{
-            $web3Status = await loadWeb3Status();
+			$web3Status = await loadWeb3Status();
 			set($web3Status);
 			if($web3Status.enabled) {
 				dungeon.load();
@@ -71,6 +72,21 @@ export const web3Status = (() => {
 			set({error:e});
 		}
 	});	
+
+	async function useNiftyGateway() {
+		$web3Status.enabling = true;
+		set($web3Status); // TODO set({enabling:true});
+		var nftg = new NiftyGatewayJS('rinkeby', process.env.NIFTYGATEWAY_DEVKEY);
+		window.nftg = nftg;
+		const nftgUser = await nftg.getWalletAndEmailAddress(); //didSucceed, emailAddress, walletAddress
+		if(nftgUser.didSucceed) {
+			$web3Status.enabled = true;
+			$web3Status.available = true;
+			$web3Status.account = nftgUser.walletAddress;
+		}
+		$web3Status.enabling = false;
+		set($web3Status);
+	}
 
     async function enable() {
 		try{
@@ -112,7 +128,7 @@ export const web3Status = (() => {
 		}
 		set($web3Status);
     }
-    return { enable, subscribe };
+    return { enable, subscribe, useNiftyGateway };
 })()
 
 
