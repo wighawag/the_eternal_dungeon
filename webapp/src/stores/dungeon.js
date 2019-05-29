@@ -5,6 +5,13 @@ import BN from 'bn.js';
 import DungeonInfo from '../../../contracts/test_deployments/Dungeon.json'
 import {pause} from '../utils/time';
 import NiftyGatewayJS from 'niftygateway';
+import Portis from '@portis/web3';
+
+
+function log(channel, ...args) {
+	console.log(channel, ...args);
+	// console.log.apply(console, args);
+}
 
 // dec2hex :: Integer -> String
 // i.e. 0-255 -> '00'-'ff'
@@ -64,6 +71,7 @@ export const web3Status = (() => {
 			$web3Status = await loadWeb3Status();
 			set($web3Status);
 			if($web3Status.enabled) {
+				log('dungeon', 'loading')
 				dungeon.load();
 			}
 		} catch(e) {
@@ -73,12 +81,29 @@ export const web3Status = (() => {
 		}
 	});	
 
+	async function usePortis() {
+		const portis = new Portis('c01effe4-fa7d-496b-9732-105080c3db96', { // 'mainnet');
+			nodeUrl: 'http://localhost:8545',
+			// chainId: 1,
+			nodeProtocol: 'rpc',
+		  });
+		const web3 = new Web3(portis.provider);
+		$web3Status.web3 = web3;
+		$web3Status.available = true;
+		set($web3Status);
+		window.web3 = web3;
+		window.portis = portis;
+		await dungeon.load();
+	}
+
 	async function useNiftyGateway() {
 		$web3Status.enabling = true;
 		set($web3Status); // TODO set({enabling:true});
 		var nftg = new NiftyGatewayJS('rinkeby', process.env.NIFTYGATEWAY_DEVKEY);
 		window.nftg = nftg;
+		console.log(nftg);
 		const nftgUser = await nftg.getWalletAndEmailAddress(); //didSucceed, emailAddress, walletAddress
+		console.log(nftgUser);
 		if(nftgUser.didSucceed) {
 			$web3Status.enabled = true;
 			$web3Status.available = true;
@@ -90,34 +115,34 @@ export const web3Status = (() => {
 
     async function enable() {
 		try{
-			//console.log('enabling');
+			log('wallet', 'enabling');
 			$web3Status.enabling = true;
 			set($web3Status); // TODO set({enabling:true});
 			let accounts = await web3.eth.getAccounts();
-			//console.log('getAccounts', accounts);
+			log('wallet', 'getAccounts', accounts);
 			if(!accounts || accounts.length == 0) {	
 				try{
 					accounts = await web3.currentProvider.enable();
-					//console.log('enable', accounts);
+					log('wallet', 'enable', accounts);
 				} catch(e) {
-					//console.log('enable rejection');
+					log('wallet', 'enable rejection');
 				}
 				
 				// Metamask no privacy allow you to fetch account here even though the user did not enable
 				if(!accounts || accounts.length == 0) {
-					//console.log('no accounts, fetching...');
+					log('wallet', 'no accounts, fetching...');
 					const testAccounts = await web3.eth.getAccounts();
-					//console.log('getAccounts again', testAccounts);
+					log('wallet', 'getAccounts again', testAccounts);
 					accounts = testAccounts; // TODO remove ?
 				}
 			}
 			
 			if(accounts && accounts.length > 0) {
-				//console.log('enabled account : ' + accounts[0]);
+				log('wallet', 'enabled account : ' + accounts[0]);
 				$web3Status.enabled = true;
 				$web3Status.account = accounts[0];
 			} else {
-				//console.log('not enabled');
+				log('wallet', 'not enabled');
 				$web3Status.enabled = false;
 			}
 			$web3Status.enabling = false;
@@ -128,7 +153,7 @@ export const web3Status = (() => {
 		}
 		set($web3Status);
     }
-    return { enable, subscribe, useNiftyGateway };
+    return { enable, subscribe, useNiftyGateway, usePortis };
 })()
 
 
@@ -161,7 +186,11 @@ async function loadDungeon() {
 		try{
 			await web3Status.enable();
 		} catch(e) {
-			throw new Error('web3 not enabled');
+			throw new Error('web3 enabling error');
+		}
+		if(!$web3Status.enabled) {
+			console.log('still not enabled');
+			return;
 		}
 	}
 
