@@ -26,5 +26,5 @@ async function connectWithPortis() {
 
 <button disabled={processing} on:click="{connectWithNifty}" >Connect via Nifty Gateway</button>
 <button disabled={processing} on:click="{connectWithPortis}" >Connect via Portis</button>
-<button href="https://metamask.io" >Download Metamask</button>
+<button on:click="{() => window.open('https://metamask.io', '_blank')}">Download Metamask</button>
             

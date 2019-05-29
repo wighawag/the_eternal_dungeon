@@ -16,7 +16,6 @@ getBlockNumber,
 getBlock,
 soliditySha3,
 privateKeyToAccount;
-const gas = 4000000; // TODO per method
 
 const Dungeon = function(provider, address, abi, options) {
     options = options || {
@@ -41,6 +40,7 @@ const Dungeon = function(provider, address, abi, options) {
     this.energy = 0;
     this.playerMoved = false;
     this.callbacks = {};
+    this.price = options.price || '5000000000000000000';
 
     // INITIALISE utils
     utils = require('./utils')(provider);
@@ -48,6 +48,7 @@ const Dungeon = function(provider, address, abi, options) {
     instantiateContract = utils.instantiateContract;
     tx = utils.tx;
     sendTx = utils.sendTx;
+    estimate = utils.estimate;
     waitReceipt = utils.waitReceipt;
     call = utils.call;
     getPastEvents = utils.getPastEvents;
@@ -149,7 +150,8 @@ Dungeon.prototype._debug = function(...args) {
 
 Dungeon.prototype.start = async function(owner) {
     const latestBlock = await getBlock('latest');
-    return sendTx({from: owner, gas}, this.contract, 'start', latestBlock.number, latestBlock.hash);
+    const gasEstimate = await estimate({from: owner, gas: 4000000}, this.contract, 'start', latestBlock.number, latestBlock.hash);
+    return sendTx({from: owner, gas: gasEstimate + 15000}, this.contract, 'start', latestBlock.number, latestBlock.hash);
 }
 
 
@@ -186,10 +188,7 @@ Dungeon.prototype.init = async function(player, delegatePrivateKey) { // TODO re
     this.inDungeon = playerData.inDungeon;
 
     this._trace({playerLocation: this.playerLocation});
-    await this._fetchRoomsAround(this.playerLocation, this.rooms, {
-        fromBlock:0,
-        toBlock: this.lastBlock
-    });
+    await this._fetchRoomsAround(this.playerLocation, this.rooms, this.lastBlock);
 
     this.isCurrentDelegate = await this.fetchIsDelegate();
 
@@ -486,15 +485,25 @@ Dungeon.prototype._stopListening = async function() {
 
 
 Dungeon.prototype.move = async function(direction) {
-    return sendTx({gas, privateKey: this.delegatePrivateKey}, this.contract, 'move', this.player, direction);
+    let gasEstimate;
+    try{
+        gasEstimate = await estimate({gas: 4000000, privateKey: this.delegatePrivateKey}, this.contract, 'move', this.player, direction);
+    } catch(e) {
+        console.error('ERROR', e);
+        gasEstimate = 4000000;
+    }
+    console.log({gasEstimate});
+    return sendTx({gas: gasEstimate + 15000, privateKey: this.delegatePrivateKey}, this.contract, 'move', this.player, direction);
 }
 
 Dungeon.prototype.join = async function() {
-    return sendTx({from: this.player, gas, value: "5000000000000000000"}, this.contract, 'join', this.delegate);
+    const gasEstimate = await estimate({from: this.player, gas: 4000000, value: this.price}, this.contract, 'join', this.delegate);
+    return sendTx({from: this.player, gas: gasEstimate + 15000, value: this.price}, this.contract, 'join', this.delegate);
 }
 
 Dungeon.prototype.addDelegate = async function() {
-    return sendTx({from: this.player, gas /*, value: "5000000000000000"*/}, this.contract, 'addDelegate', this.delegate);
+    const gasEstimate = await estimate({from: this.player, gas: 4000000}, this.contract, 'addDelegate', this.delegate);
+    return sendTx({from: this.player, gas: gasEstimate + 15000}, this.contract, 'addDelegate', this.delegate);
 }
 
 Dungeon.prototype.getPastEvents = function(eventName, options) {

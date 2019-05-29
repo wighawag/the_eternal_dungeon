@@ -74,12 +74,11 @@ async function text_while_moving() {
 table {
   table-layout: fixed;
   width: 100%;
-  /* height: 100%; */
-  border-collapse: collapse;
-  border: 3px solid purple;
+  /* border-collapse: collapse; */
+  /* border: 3px solid purple; */
 }
 td {
-    border: 3px solid red;
+    /* border: 3px solid red; */
 }
 td > div {
     overflow: hidden;

@@ -45,6 +45,44 @@ module.exports = function(provider) {
                 await pause(interval);
             }
         },
+        estimate: async (options, contract, methodName, ...args) => {
+            if(options.privateKey) {
+                const privateKey = options.privateKey;
+                delete options.privateKey; // TODO better
+                if(contract) {
+                    options.data = contract.methods[methodName](...args).encodeABI();
+                    options.to = contract.options.address;
+                }
+                options.gas = web3.utils.toHex(options.gas);
+                        
+                const from = web3.eth.accounts.privateKeyToAccount(privateKey).address;
+                options.from = from;
+                options.nonce = web3.utils.toHex(options.nonce || await web3.eth.getTransactionCount(from));
+                
+                const signedTx = web3.eth.accounts.signTransaction(options, privateKey);
+                return web3.eth.estimateGas(options);
+            } else {
+                if(contract) {
+                    return contract.methods[methodName](...args).estimateGas(options);
+                } else {
+                    return web3.eth.estimateGas(options);
+                }
+            }
+        },
+        estimateFrom: (options, contract, methodName, ...args) =>{
+            let blockNumber;
+            if(typeof contract == 'string') {
+                args = args.slice();
+                args.splice(0,0,methodName);
+                methodName = contract;
+                contract = options;
+                options = null;
+            } else {
+                blockNumber = options.blockNumber;
+                delete options.blockNumber;
+            }
+            return contract.methods[methodName](...args).estimateGas(options, blockNumber);
+        },
         sendTx: (options, contract, methodName, ...args) => {
             return new Promise(async (resolve, reject) => {
                 if(options.privateKey) {

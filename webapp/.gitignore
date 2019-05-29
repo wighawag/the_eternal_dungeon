@@ -1,6 +1,7 @@
 .DS_Store
 node_modules
 public/bundle.*
+public/contracts
 package-lock.json
 yarn.lock
 .env*

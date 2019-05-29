@@ -2,7 +2,7 @@ pragma solidity 0.5.5;
 
 contract Dungeon {
 
-    uint256 private constant MIN_BALANCE = 5000000000000000; // TODO
+    uint256 private MIN_BALANCE;// = 5000000000000000; // TODO constant
 
     event RoomDiscovered(uint256 indexed location, uint64 blockNumber, uint64 numRooms, uint32 numExits);
     event RoomActualised(uint256 indexed location, bytes32 blockHash, uint8 exits, uint8 kind, uint64 numRooms, uint32 numExits); // TODO remve exits and kind and room.numRooms and room.numExits
@@ -45,8 +45,9 @@ contract Dungeon {
     mapping(uint256 => Room) rooms;
 
     address owner;
-    constructor(address _owner) public {
+    constructor(address _owner, uint256 _minBalance) public {
         owner = _owner;
+        MIN_BALANCE = _minBalance;
     }
 
     modifier withCorrectSender(address sender) {

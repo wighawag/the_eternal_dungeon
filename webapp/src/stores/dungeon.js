@@ -2,11 +2,12 @@ import { writable, readable, derived } from 'svelte/store';
 import Web3 from 'web3';
 import Dungeon from '../../../contracts/dungeon';
 import BN from 'bn.js';
-import DungeonInfo from '../../../contracts/test_deployments/Dungeon.json'
 import {pause} from '../utils/time';
 import NiftyGatewayJS from 'niftygateway';
 import Portis from '@portis/web3';
+import axios from 'axios';
 
+let DungeonInfo;
 
 function log(channel, ...args) {
 	console.log(channel, ...args);
@@ -26,27 +27,61 @@ function generateRandomKey () {
 	return Array.from(arr, dec2hex).join('')
 }
 
+
+
+let provider;
+
+async function fetchContracts(web3) {
+	const chainId = await web3.eth.net.getId();
+	const config = require('../../../config')(chainId)
+	console.log({chainId});
+	let validChain = false;
+	const validChains = [];
+	try{
+		const response = await axios.get('contracts');
+		const contracts = response.data;
+		for(let chainId of Object.keys(contracts)) {
+			validChains.push(chainId);
+		}
+		validChain = !!contracts[chainId];
+		if(validChain) {
+			DungeonInfo = contracts[chainId]['Dungeon'];
+		} else {
+
+		}
+	} catch(e) {
+		console.error('no contracts configured');
+	}
+	return {validChain, validChains, config};
+}
+
 async function loadWeb3Status() {
 	//console.log('loading web3 status...');
-	let provider;
-	if (window.ethereum) {
-		provider = window.ethereum;
-	} else if (window.web3) {
-		provider = window.web3.currentProvider;
-	}
-
-	if(!provider){
-		return {
-			available: false,
+	if(!provider) {
+		if (window.ethereum) {
+			provider = window.ethereum;
+		} else if (window.web3) {
+			provider = window.web3.currentProvider;
+		}
+	
+		if(!provider){
+			return {
+				available: false,
+			}
 		}
 	}
 	const web3 = new Web3(provider);
-	window.web3 = web3;
+	window.web3 = web3;	
+	const {validChain, validChains, config} = await fetchContracts(web3);
+	
 	const accounts = await web3.eth.getAccounts();
 	if(accounts && accounts.length > 0) {
 		//console.log('accounts available : ' + accounts[0]);
 		return {
 			available: true,
+			validChain,
+			validChains,
+			config,
 			enabled: true,
 			account: accounts[0],
 			web3,
@@ -55,6 +90,9 @@ async function loadWeb3Status() {
 	//console.log('account not available');
 	return {
 		available: true,
+		validChain,
+		validChains,
+		config,
 		enabled: false,
 		web3,
 	}
@@ -70,7 +108,7 @@ export const web3Status = (() => {
 		try{
 			$web3Status = await loadWeb3Status();
 			set($web3Status);
-			if($web3Status.enabled) {
+			if($web3Status.enabled && $web3Status.validChain) {
 				log('dungeon', 'loading')
 				dungeon.load();
 			}
@@ -82,18 +120,27 @@ export const web3Status = (() => {
 	});	
 
 	async function usePortis() {
-		const portis = new Portis('c01effe4-fa7d-496b-9732-105080c3db96', { // 'mainnet');
-			nodeUrl: 'http://localhost:8545',
-			// chainId: 1,
-			nodeProtocol: 'rpc',
-		  });
+		const portis = new Portis('c01effe4-fa7d-496b-9732-105080c3db96', 'sokol'); //'rinkeby'); // 'mainnet');
+		// {
+		// 	nodeUrl: 'http://localhost:8545',
+		// 	// chainId: 1,
+		// 	nodeProtocol: 'rpc',
+		//   });
 		const web3 = new Web3(portis.provider);
 		$web3Status.web3 = web3;
 		$web3Status.available = true;
+		const {validChain, validChains, config} = await fetchContracts(web3);
+		$web3Status.validChain = validChain;
+		$web3Status.validChains = validChains;
+		$web3Status.config = config;
 		set($web3Status);
 		window.web3 = web3;
 		window.portis = portis;
-		await dungeon.load();
+		if(validChain) {
+			await dungeon.load();
+		} else {
+			// TODO allow to manually switch for portis
+		}
 	}
 
 	async function useNiftyGateway() {
@@ -215,11 +262,13 @@ async function loadDungeon() {
 	const dungeon = new Dungeon(web3.currentProvider, DungeonInfo.address, DungeonInfo.contractInfo.abi, {
         logLevel: 'trace',
 		blockInterval: 12,
+		price: $web3Status.config.price,
     });
 	await dungeon.init(player, key);  // TODO on accounts changed, need to reset // easiest solution : reload page on account change
 
 	window.web3 = web3; // DEBUGING
 	window.BN = BN;
+	window.dungeon = dungeon;
 	
 	return dungeon;
 }
@@ -277,6 +326,7 @@ export const roomBlockUpdate = derived(dungeon, ($dungeon, set) => {
 export const room = derived([dungeon, playerLocation, roomBlockUpdate], ([$dungeon, $playerLocation, $roomBlockUpdate], set) => {
 	if($playerLocation && $dungeon && !$dungeon.error) {
 		const room = $dungeon.rooms[$playerLocation];
+		console.log({room});
         const $directions = $dungeon.allExitsFor(room);
 		// TODO
 		set({
