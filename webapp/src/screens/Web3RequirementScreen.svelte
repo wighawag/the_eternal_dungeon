@@ -11,10 +11,10 @@ async function connectWithNifty() {
     }
     processing = false;
 }
-async function connectWithPortis() {
+async function connectWithPortis(chainName) {
     processing = true;
     try{
-        await web3Status.usePortis();
+        await web3Status.usePortis(chainName);
     }catch(e) {
         processing = false;
     }
@@ -24,7 +24,8 @@ async function connectWithPortis() {
     
 <p>Please get a wallet</p>
 
-<button disabled={processing} on:click="{connectWithNifty}" >Connect via Nifty Gateway</button>
-<button disabled={processing} on:click="{connectWithPortis}" >Connect via Portis</button>
+<!-- <button disabled={processing} on:click="{connectWithNifty}" >Connect via Nifty Gateway</button> -->
+<button disabled={processing} on:click="{() => connectWithPortis('rinkeby')}" >Connect via Portis (Rinkeby)</button>
+<button disabled={processing} on:click="{() => connectWithPortis('sokol')}" >Connect via Portis (Sokol)</button>
 <button on:click="{() => window.open('https://metamask.io', '_blank')}">Download Metamask</button>
             

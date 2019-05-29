@@ -150,8 +150,8 @@ Dungeon.prototype._debug = function(...args) {
 
 Dungeon.prototype.start = async function(owner) {
     const latestBlock = await getBlock('latest');
-    const gasEstimate = await estimate({from: owner, gas: 4000000}, this.contract, 'start', latestBlock.number, latestBlock.hash);
-    return sendTx({from: owner, gas: gasEstimate + 15000}, this.contract, 'start', latestBlock.number, latestBlock.hash);
+    // const gasEstimate = await estimate({from: owner, gas: 4000000}, this.contract, 'start', latestBlock.number, latestBlock.hash);
+    return sendTx({from: owner, gas: 4000000}, this.contract, 'start', latestBlock.number, latestBlock.hash);
 }
 
 

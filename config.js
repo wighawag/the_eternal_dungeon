@@ -8,6 +8,10 @@ const configs = {
         minBalance: '5000000000000000',
         price: '500000000000000000',
     },
+    '4':{
+        minBalance: '5000000000000000',
+        price: '50000000000000000',
+    },
 }
 
 module.exports = (chainId) => {

@@ -10,6 +10,7 @@ let moving_texts = null;
 let currentStage = 0;
 let room_described = false;
 let roomStage = 0;
+let error;
 
 let currentScene = $room.scene;
 async function performChoice(choice) {
@@ -17,7 +18,7 @@ async function performChoice(choice) {
     room_described = false;
     roomStage = 0;
     text_while_moving();
-    const receipt = await choice.perform().then(utils.waitReceipt);
+    const receipt = await choice.perform().then(utils.waitReceipt); // TODO try catch
     await $dungeon.once('block', (block) => block >= receipt.blockNumber);
     console.log('done', receipt);
     moving = false;
@@ -29,11 +30,24 @@ async function move(direction) {
     room_described = false;
     roomStage = 0;
     text_while_moving();
-    const receipt = await $dungeon.move(direction).then(utils.waitReceipt);
-    await $dungeon.once('block', (block) => block >= receipt.blockNumber);
-    console.log('done', receipt);
+    let receipt;
+    let failed = false;
+    try{
+        receipt = await $dungeon.move(direction).then(utils.waitReceipt);
+    } catch(e){
+        console.log('ERROR move', e);
+        failed = true;
+    }
+    if(failed) {
+        roomStage = 999;
+        room_described = true;
+        // TODO error showing...
+    } else {
+        await $dungeon.once('block', (block) => block >= receipt.blockNumber);
+        console.log('done', receipt);
+        currentScene = $room.scene;
+    }
     moving = false;
-    currentScene = $room.scene;
 }
 
 let breadcrumb = [];

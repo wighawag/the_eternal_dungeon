@@ -4682,10 +4682,10 @@ rocketh-web3@^0.2.7:
   resolved "https://registry.yarnpkg.com/rocketh-web3/-/rocketh-web3-0.2.7.tgz#1e6703412a645ab3749ef5f2a126e74aa14d2e0e"
   integrity sha512-N2yJcTA6hrsXfnsFuvDZv8LaOhTXBM9uXxcPo+EFeqjmKDsu3MEpCa2mzCJ7yIbxTgMBhHplu0pZFe5jkACKeQ==
 
-rocketh@^0.2.29:
-  version "0.2.29"
-  resolved "https://registry.yarnpkg.com/rocketh/-/rocketh-0.2.29.tgz#8f35b3dc067ec1bf0e21c3e509019b276bce666d"
-  integrity sha512-k9rFOSN3Sqh8DNbAPF1F5KUM0OjUsc/xczU0o7hrbOlxHeUxb0bLzRXuQVX+sVJJgnslL+FRZTDz1U5CE0QkrA==
+rocketh@^0.2.36:
+  version "0.2.36"
+  resolved "https://registry.yarnpkg.com/rocketh/-/rocketh-0.2.36.tgz#6a5f2df5a846069c4dafc7ae825dd16266407efb"
+  integrity sha512-maB3bhe6rGVmbP24mNmHOS2yaq1BFjBwCAMulTIIiUjRQlvI5wahLyk2KIIUsNoleT/uBsZLVmhkjofccB7BPw==
   dependencies:
     "@rauschma/stringio" "^1.4.0"
     armlet "^2.0.1"
