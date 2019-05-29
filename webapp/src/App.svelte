@@ -11,6 +11,7 @@
 	import WelcomeBackScreen from './screens/WelcomeBackScreen.svelte';
 	import RefillScreen from './screens/RefillScreen.svelte';
 	import InvalidChainScreen from './screens/InvalidChainScreen.svelte';
+	import WalletChoiceScreen from './screens/WalletChoiceScreen.svelte';
 
 	export let name;
 </script>
@@ -46,6 +47,8 @@
 {:else if $web3Status && $web3Status != "loading"}
 	{#if !$web3Status.available}
 		<Web3RequirementScreen/>
+	{:else if $web3Status.firstTime}
+		<WalletChoiceScreen/>
 	{:else if !$web3Status.validChain}
 		<InvalidChainScreen/>
 	{:else if !$web3Status.enabled}

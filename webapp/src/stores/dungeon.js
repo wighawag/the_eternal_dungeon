@@ -28,9 +28,6 @@ function generateRandomKey () {
 }
 
 
-
-let provider;
-
 async function fetchChainInfos() {
 	const validChains = [];
 	let contracts;
@@ -81,36 +78,10 @@ function getProviderType(provider) {
         return 'localhost';
 }
 
-async function loadWeb3Status() {
-	//console.log('loading web3 status...');
-	let checkAccounts = true;
-	if(!provider) {
-		if (window.ethereum) {
-			provider = window.ethereum;
-			const providerType = getProviderType(window.ethereum);
-			
-			if(typeof providerType == 'undefined') {
-				checkAccounts = false;
-				console.log('unknown provider type');
-			} else {
-				console.log({providerType});
-			}
-		} else if (window.web3) {
-			provider = window.web3.currentProvider;
-		}
-	
-		if(!provider){
-			return {
-				available: false,
-			}
-		}
+async function generateWeb3Status(web3, providerUsed, checkAccounts = true) {
+	if(providerUsed) {
+		localStorage.setItem('lastProvider', JSON.stringify(providerUsed)); 
 	}
-	const web3 = new Web3(provider);
-	window.web3 = web3;
-	return generateWeb3Status(web3, checkAccounts);
-}
-
-async function generateWeb3Status(web3, checkAccounts = true) {
 	const {validChains, contracts} = await fetchChainInfos();
 	let validChain = false;
 	let chainId;
@@ -177,7 +148,30 @@ export const web3Status = (() => {
 		}
 	});	
 
-	async function usePortis(chainName) {
+	async function loadWeb3Status() {
+		const lastProviderUsedS = localStorage.getItem('lastProvider');
+		if(lastProviderUsedS) {
+			const lastProviderUsed = JSON.parse(lastProviderUsedS);
+			console.log({lastProviderUsed})
+			if(lastProviderUsed.type == 'portis') {
+				console.log('using portis');
+				return setupPortis(lastProviderUsed.params);
+			} else {
+				return setupBuiltInWallet();
+			}
+		}
+
+		const {validChains, contracts} = await fetchChainInfos();
+		const {provider, checkAccounts, providerType} = getBuiltInProvider();
+		return {
+			firstTime: true,
+			available: !!provider,
+			validChains,
+			enabled: false
+		}
+	}
+
+	async function setupPortis(chainName) {
 		const portis = new Portis('c01effe4-fa7d-496b-9732-105080c3db96', chainName); //'rinkeby'); // 'mainnet');
 		// {
 		// 	nodeUrl: 'http://localhost:8545',
@@ -187,8 +181,56 @@ export const web3Status = (() => {
 		const web3 = new Web3(portis.provider);
 		window.web3 = web3;
 		window.portis = portis;
-		$web3Status = await generateWeb3Status(web3);
-		set($web3Status);
+		return generateWeb3Status(web3, {type:'portis', params: chainName});
+	}
+
+	async function usePortis(chainName) {
+		$web3Status = await setupPortis(chainName)
+		set($web3Status)
+		if($web3Status.validChain) {
+			await dungeon.load();
+		} else {
+			// TODO allow to manually switch for portis
+		}
+	}
+
+	function getBuiltInProvider() {
+		let provider;
+		let checkAccounts = true;
+		let providerType;
+		if (window.ethereum) {
+			provider = window.ethereum;
+			providerType = getProviderType(window.ethereum);
+			
+			if(typeof providerType == 'undefined') {
+				checkAccounts = false;
+				console.log('unknown provider type');
+			} else {
+				console.log({providerType});
+			}
+		} else if (window.web3) {
+			provider = window.web3.currentProvider;
+		}
+		return {provider, checkAccounts, providerType};
+	}
+
+	async function setupBuiltInWallet() {
+		
+		const {provider, checkAccounts, providerType} = getBuiltInProvider();
+		if(!provider){
+			return {
+				available: false,
+			}
+		}
+
+		const web3 = new Web3(provider);
+		window.web3 = web3;
+		return generateWeb3Status(web3, {type: providerType}, checkAccounts);
+	}
+
+	async function useBuiltInWallet() {
+		$web3Status = await setupBuiltInWallet()
+		set($web3Status)
 		if($web3Status.validChain) {
 			await dungeon.load();
 		} else {
@@ -197,6 +239,16 @@ export const web3Status = (() => {
 	}
 
 	async function useNiftyGateway() {
+		$web3Status = await setupNiftyGateway()
+		set($web3Status)
+		if($web3Status.validChain) {
+			await dungeon.load();
+		} else {
+			// TODO allow to manually switch for portis
+		}
+	}
+
+	async function setupNiftyGateway() {
 		$web3Status.enabling = true;
 		set($web3Status); // TODO set({enabling:true});
 		var nftg = new NiftyGatewayJS('rinkeby', process.env.NIFTYGATEWAY_DEVKEY);
@@ -210,7 +262,7 @@ export const web3Status = (() => {
 			$web3Status.account = nftgUser.walletAddress;
 		}
 		$web3Status.enabling = false;
-		set($web3Status);
+		return $web3Status;
 	}
 
     async function enable() {
@@ -253,7 +305,7 @@ export const web3Status = (() => {
 		}
 		set($web3Status);
     }
-    return { enable, subscribe, useNiftyGateway, usePortis };
+    return { enable, subscribe, useNiftyGateway, usePortis, useBuiltInWallet };
 })()
 
 
@@ -294,22 +346,28 @@ async function loadDungeon() {
 		}
 	}
 
-	const player = $web3Status.account;
+	const player = $web3Status.account.toLowerCase();
 	console.log({player});
 
-	let key = localStorage.getItem(player); // TODO on accounts changed, need to reset // easiest solution : reload page on account change
-	if(!key) {
+	let key;
+	const dataS = localStorage.getItem(player); // TODO on accounts changed, need to reset // easiest solution : reload page on account change
+	let data;
+	if(dataS) {
+		data = JSON.parse(dataS);
+	}
+	if(!data || !data.key) {
 		key = generateRandomKey();
 		try {
-			localStorage.setItem(player, key);
+			localStorage.setItem(player, JSON.stringify({key}));
 		} catch(e) {
 			console.error('could not save to storage');
 		}
 		// TODO remove
 		console.log('new key', key);
 	} else {
+		key = data.key;
 		// TODO remove
-		console.log('resuse', key);
+		console.log('reusing : ', key);
 	}
 	
 	const dungeon = new Dungeon(web3.currentProvider, DungeonInfo.address, DungeonInfo.contractInfo.abi, {

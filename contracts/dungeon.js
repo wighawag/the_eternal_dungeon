@@ -191,6 +191,7 @@ Dungeon.prototype.init = async function(player, delegatePrivateKey) { // TODO re
     await this._fetchRoomsAround(this.playerLocation, this.rooms, this.lastBlock);
 
     this.isCurrentDelegate = await this.fetchIsDelegate();
+    console.log('currentDelegate', this.isCurrentDelegate);
 
     this._startListening();
     this.initializating = false;
