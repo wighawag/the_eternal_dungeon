@@ -203,7 +203,7 @@ export const web3Status = (() => {
 			providerType = getProviderType(window.ethereum);
 			
 			if(typeof providerType == 'undefined') {
-				checkAccounts = false;
+				checkAccounts = false;// TODO only for navigator.userAgent.indexOf("Opera");
 				console.log('unknown provider type');
 			} else {
 				console.log({providerType});
