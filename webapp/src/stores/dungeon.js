@@ -7,6 +7,90 @@ import NiftyGatewayJS from 'niftygateway';
 import Portis from '@portis/web3';
 import axios from 'axios';
 
+const hallDesc = {
+	scene: {
+		name: 'The hall',
+		description: [
+			'The room is quite big with an impressive cross arch on the ceiling. The walls are all white. In the middle stand a statue and in the corner, you can notice a sort of box.',
+		],
+		scenes: [
+			{
+				name: 'look box',
+				description: ['The box is made of rock, there is what some sort of pressing mechanism'],
+				scenes: [
+					{
+						name: 'press mechanism',
+						description: [
+							'As you press the mechanism, you feel underneath like something is moving',
+							'The box is opening...'
+						],
+						actionIndex: 0,
+					},
+				],
+			},
+			{
+				name: 'look statue',
+				description: ['The status is magnificient. it depicts a woman carrying in her a slate that she seems to read as one of her fingers touch it'],
+				scenes: [
+					{
+						name: 'touch',
+						description: ['it feels cold']
+					},
+				],
+			},
+		],
+	},
+};
+
+const rooms = [
+	{
+		scene: {
+			name: 'The random',
+			description: [
+				'As you reach into the next room, you smells something horrible, like some rotten eggs. Then you realize why, the walls seems to covered by some sort of fungi. Nothing else seems to be present here.',
+			],
+			scenes: [
+				{
+					name: 'look at fungi',
+					description: ['The smells is very strong but you indeed confirm that this some sort of life form'],
+				},
+			],
+		},
+	},
+	{
+		scene: {
+			name: 'The lair',
+			description: [
+				'The next room is filled with smoke',
+				'Inside, you quickly noticed some being sitting in the middle. He looks at you in a way that makes you feel umcomfortable',
+			],
+			scenes: [
+				{
+					name: 'attack',
+					description: ['<moving_text>'],
+					actionIndex: 1,
+				},
+			],
+		},
+	},
+	{
+		scene: {
+			name: 'The lair',
+			description: [
+				'The next room is filled with smoke',
+				'Inside, you quickly noticed some being sitting in the middle. He looks at you in a way that makes you feel umcomfortable',
+			],
+			scenes: [
+				{
+					name: 'attack',
+					description: ['<moving_text>'],
+					actionIndex: 1,
+				},
+			],
+		},
+	},
+]
+
 let DungeonInfo;
 
 function log(channel, ...args) {
@@ -434,53 +518,48 @@ export const roomBlockUpdate = derived(dungeon, ($dungeon, set) => {
 	$dungeon.on('roomChanged', (block) => { set(block)}); // TODO roomChanged for new exits (from neighbor rooms)
 })
 
+
+function textify(room) {
+	function textifyScene(scene, directions) { // origin
+		let description = scene.description;
+		if(directions) {
+			const exitsArray = [];
+			for(let exit of ['north', 'east', 'south', 'west']) {
+				if(directions[exit]) {
+					exitsArray.push(exit);
+				}
+			}
+			let exitsDescription;
+			if(exitsArray.length == 0) {
+				exitsDescription = "The room has no exits";
+			} else if(exitsArray.length == 1) {
+				exitsDescription = "The room has only one exists, on the " + exitsArray[0];
+			} else {
+				exitsDescription = 'There are ' + exitsArray.length + ' exists, on the ' + exitsArray.slice(0, exitsArray.length-1).join(', ') + ' and ' + exitsArray[exitsArray.length-1];
+			}
+			description.push(exitsDescription)
+		}
+		scene.description = description;
+		return scene;
+	}
+	room.scene = textifyScene(room.scene, room.directions);
+	return room; // TODO clone
+}
+
 export const room = derived([dungeon, playerLocation, roomBlockUpdate], ([$dungeon, $playerLocation, $roomBlockUpdate], set) => {
 	if($playerLocation && $dungeon && !$dungeon.error) {
 		const room = $dungeon.rooms[$playerLocation];
-		console.log({room});
-        const $directions = $dungeon.allExitsFor(room);
-		// TODO
-		set({
-			scene: {
-				name: 'The hall',
-				description: [
-					'The room is quite big with an impressive cross arch on the ceiling. The walls are all white. In the middle stand a statue and in the corner, you can notice a sort of box.',
-					'exits ...'
-				],
-				scenes: [
-					{
-						name: 'look box',
-						description: ['The box is made of rock, there is what some sort of pressing mechanism'],
-						scenes: [
-							{
-								name: 'press mechanism',
-								description: [
-									'As you press the mechanism, you feel underneath like something is moving',
-									'The box is opening...'
-								],
-								actionIndex: 0,
-							}
-						],
-					},
-					{
-						name: 'look statue',
-						description: ['The status is magnificient. it depicts a woman carrying in her a slate that she seems to read as one of her fingers touch it'],
-						scenes: [
-							{
-								name: 'touch',
-								description: ['it feels cold']
-							}
-						],
-					},
-					{
-						name: 'attack',
-						description: ['<moving_text>'],
-						actionIndex: 1,
-					},
-				],
-			},
-			directions: $directions
-		});
+		// console.log({room});
+		const $directions = $dungeon.allExitsFor(room);
+		let roomDesc;
+		if(room.location == '0') {
+			console.log('HALL');
+			roomDesc = hallDesc;	
+		} else {
+			roomDesc = rooms[$dungeon.getRandomValue(room.location, room.hash, 99, rooms.length)];
+		}
+		roomDesc.directions = $directions;
+		set(textify(roomDesc));
 	}
 })
 

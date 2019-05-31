@@ -46,6 +46,7 @@ async function move(direction) {
         await $dungeon.once('block', (block) => block >= receipt.blockNumber);
         console.log('done', receipt);
         currentScene = $room.scene;
+        // TODO currentScene.description.unshift('You reach into the next room');
     }
     moving = false;
 }
