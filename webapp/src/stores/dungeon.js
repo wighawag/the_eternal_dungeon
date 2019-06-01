@@ -22,9 +22,10 @@ const hallDesc = {
 						name: 'press mechanism',
 						description: [
 							'As you press the mechanism, you feel underneath like something is moving',
-							'The box is opening...'
+							'The box is opening...',
+							'Nothing inside' // TODO remove
 						],
-						actionIndex: 0,
+						actionIndex: 0, // transition text is description ?
 					},
 				],
 			},

@@ -126,7 +126,7 @@ tr {
 
 <div class="footer">
     <hr/>
-    <h3 style="visibility:{($room && !moving && moving_texts == null && room_described)?'visible':'hidden'}">What do you do ?</h3>
+    <h3 style="visibility:{($room && !moving && moving_texts == null && room_described && ((currentScene.scenes && currentScene.scenes.length > 0) || currentScene.directions))?'visible':'hidden'}">What do you do ?</h3>
     <table style="visibility:{$room?'visible':'hidden'}">
         <tr>
             <td colspan="2"><div>
