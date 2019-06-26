@@ -5,6 +5,7 @@ import BN from 'bn.js';
 import {pause} from '../utils/time';
 import NiftyGatewayJS from 'niftygateway';
 import Portis from '@portis/web3';
+import { Bitski, AuthenticationStatus } from 'bitski';
 import axios from 'axios';
 
 const hallDesc = {
@@ -241,7 +242,10 @@ export const web3Status = (() => {
 			if(lastProviderUsed.type == 'portis') {
 				console.log('using portis');
 				return setupPortis(lastProviderUsed.params);
-			} else {
+			} else if(lastProviderUsed.type == 'bitski') {
+				console.log('using bitski');
+				return setupBitski(lastProviderUsed.params);
+			}else{
 				return setupBuiltInWallet();
 			}
 		}
@@ -275,6 +279,49 @@ export const web3Status = (() => {
 		if($web3Status.validChain) {
 			await dungeon.load();
 		} else {
+			console.log('WRONG CHAIN IN PORTIS')
+			// TODO allow to manually switch for portis
+		}
+	}
+
+	async function setupBitski(chainName) {
+		const bitski = new Bitski('5234dddb-af72-4c6d-a195-ab8fcf8cae13', 'http://localhost:8080/bitski.html');
+		const bitskiProvider = bitski.getProvider({ networkName: chainName });
+		const web3 = new Web3(bitskiProvider);
+		window.web3 = web3;
+		window.bitski = bitski;
+		if (bitski.authStatus === AuthenticationStatus.Connected) {
+			console.log('already connected');
+			return generateWeb3Status(web3, {type:'bitski', params: chainName});	
+		}else if(bitski.authStatus === AuthenticationStatus.NotConnected){
+			console.log('bitski not connected');
+		}else if(bitski.authStatus === AuthenticationStatus.Expired) {
+			console.log('bitski expired');
+		} else {
+			console.error('wrong connection status', bitski.authStatus);
+		}
+		
+		const {validChains, contracts} = await fetchChainInfos();
+		const {provider, checkAccounts, providerType} = getBuiltInProvider();
+		return {
+			firstTime: true,
+			available: !!provider,
+			validChains,
+			enabled: false
+		}
+	}
+
+	async function useBitski(chainName) {
+		$web3Status = await setupBitski(chainName)
+		if(!$web3Status.enabled) {
+			await bitski.signIn(); // force popup
+			$web3Status = await generateWeb3Status(web3, {type:'bitski', params: chainName});
+		}
+		set($web3Status)
+		if($web3Status.validChain) {
+			await dungeon.load();
+		} else {
+			console.log('WRONG CHAIN IN BITSKI')
 			// TODO allow to manually switch for portis
 		}
 	}
@@ -390,7 +437,7 @@ export const web3Status = (() => {
 		}
 		set($web3Status);
     }
-    return { enable, subscribe, useNiftyGateway, usePortis, useBuiltInWallet };
+    return { enable, subscribe, useNiftyGateway, usePortis, useBitski, useBuiltInWallet };
 })()
 
 

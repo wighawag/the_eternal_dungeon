@@ -7,6 +7,7 @@ async function enterDungeon() {
     try{
         await $dungeon.join().then(utils.waitReceipt);
     }catch(e) {
+        console.error(e);
         entering = false;
     }
     // await dungeon.wa
