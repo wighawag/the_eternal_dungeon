@@ -1,10 +1,13 @@
 <script>
+export let room;
+export let utils;
+export let dungeon;
+
 import TypeWriterText from './TypeWriterText.svelte';
 import {pause} from '../utils/time';
-import { room, dungeon} from '../stores/dungeon';
 import { typewriter } from '../transitions';
 import { room_to_room } from '../db'
-const utils = $dungeon.utils;
+
 let moving = false;
 let moving_texts = null;
 let currentStage = 0;
@@ -12,17 +15,17 @@ let room_described = false;
 let roomStage = 0;
 let error;
 
-let currentScene = $room.scene;
+let currentScene = room.scene;
 async function performChoice(choice) {
     moving = true;
     room_described = false;
     roomStage = 0;
     text_while_moving();
     const receipt = await choice.perform().then(utils.waitReceipt); // TODO try catch
-    await $dungeon.once('block', (block) => block >= receipt.blockNumber);
+    await dungeon.once('block', (block) => block >= receipt.blockNumber);
     console.log('done', receipt);
     moving = false;
-    currentScene = $room.scene;
+    currentScene = room.scene;
 }
 
 async function move(direction) {
@@ -33,7 +36,7 @@ async function move(direction) {
     let receipt;
     let failed = false;
     try{
-        receipt = await $dungeon.move(direction).then(utils.waitReceipt);
+        receipt = await dungeon.move(direction).then(utils.waitReceipt);
     } catch(e){
         console.log('ERROR move', e);
         failed = true;
@@ -43,9 +46,9 @@ async function move(direction) {
         room_described = true;
         // TODO error showing...
     } else {
-        await $dungeon.once('block', (block) => block >= receipt.blockNumber);
+        await dungeon.once('block', (block) => block >= receipt.blockNumber);
         console.log('done', receipt);
-        currentScene = $room.scene;
+        currentScene = room.scene;
         // TODO currentScene.description.unshift('You reach into the next room');
     }
     moving = false;
@@ -108,7 +111,7 @@ tr {
 </style>
 
 <div class="content">
-{#if $room} <!-- description of the current room -->
+{#if room} <!-- description of the current room -->
     <h3>Room xxx</h3>
     {#if moving_texts != null}
         <TypeWriterText texts={moving_texts} charTime=50 bind:stage={currentStage} on:done="{() => {moving_texts=null; currentStage=0;}}"/>
@@ -117,8 +120,8 @@ tr {
         <p in:typewriter="{{ charTime: 100 }}">..............................................................</p>
     {:else} 
         <TypeWriterText texts={currentScene.description} charTime=50 bind:stage={roomStage} on:nomoretext="{() => {room_described=true;}}"/>    
-    <!-- <p>{$room.scene.description}</p>  -->
-        <!-- <p in:typewriter>{$room.scene.description}</p>  -->
+    <!-- <p>{room.scene.description}</p>  -->
+        <!-- <p in:typewriter>{room.scene.description}</p>  -->
     {/if}
 {/if}
 
@@ -126,11 +129,11 @@ tr {
 
 <div class="footer">
     <hr/>
-    <h3 style="visibility:{($room && !moving && moving_texts == null && room_described && ((currentScene.scenes && currentScene.scenes.length > 0) || currentScene.directions))?'visible':'hidden'}">What do you do ?</h3>
-    <table style="visibility:{$room?'visible':'hidden'}">
+    <h3 style="visibility:{(room && !moving && moving_texts == null && room_described && ((currentScene.scenes && currentScene.scenes.length > 0) || currentScene.directions))?'visible':'hidden'}">What do you do ?</h3>
+    <table style="visibility:{room?'visible':'hidden'}">
         <tr>
             <td colspan="2"><div>
-                {#if $room && !moving && moving_texts == null && room_described}
+                {#if room && !moving && moving_texts == null && room_described}
                     {#if currentScene.scenes && currentScene.scenes.length > 0}
                     <button on:click="{() => readScene(currentScene.scenes[0])}" >{currentScene.scenes[0].name}</button> 
                     {/if}
@@ -142,8 +145,8 @@ tr {
 
             <td>
             <div class="center">
-                {#if $room && currentScene == $room.scene && !moving && moving_texts == null && room_described}
-                <button disabled={moving || !$room.directions.north} on:click="{() => move(0)}" >North</button> 
+                {#if room && currentScene == room.scene && !moving && moving_texts == null && room_described}
+                <button disabled={moving || !room.directions.north} on:click="{() => move(0)}" >North</button> 
                 {/if}
             </div>
             </td>
@@ -151,7 +154,7 @@ tr {
         </tr>
         <tr>
             <td colspan="2"><div>
-                    {#if $room && !moving && moving_texts == null && room_described}
+                    {#if room && !moving && moving_texts == null && room_described}
                         {#if currentScene.scenes && currentScene.scenes.length > 1}
                         <button on:click="{() => readScene(currentScene.scenes[1])}" >{currentScene.scenes[1].name}</button> 
                         {/if}
@@ -161,23 +164,23 @@ tr {
             <td><div></div></td>
             <td>
             <div class="center">
-                {#if $room && currentScene == $room.scene && !moving && moving_texts == null && room_described}
-                <button disabled={moving || !$room.directions.west} on:click="{() => move(3)}" >West</button>
+                {#if room && currentScene == room.scene && !moving && moving_texts == null && room_described}
+                <button disabled={moving || !room.directions.west} on:click="{() => move(3)}" >West</button>
                 {/if}
             </div>
             </td>
             <td><div></div></td> 
             <td>
             <div class="center">
-                {#if $room && currentScene == $room.scene && !moving && moving_texts == null && room_described}
-                <button disabled={moving || !$room.directions.east} on:click="{() => move(1)}" >East</button>
+                {#if room && currentScene == room.scene && !moving && moving_texts == null && room_described}
+                <button disabled={moving || !room.directions.east} on:click="{() => move(1)}" >East</button>
                 {/if}
             </div>
             </td>
         </tr>
         <tr>
             <td colspan="2"><div>
-                    {#if $room && !moving && moving_texts == null && room_described}
+                    {#if room && !moving && moving_texts == null && room_described}
                         {#if currentScene.scenes && currentScene.scenes.length > 2}
                         <button on:click="{() => readScene(currentScene.scenes[2])}" >{currentScene.scenes[2].name}</button> 
                         {/if}
@@ -188,8 +191,8 @@ tr {
             <td><div></div></td>
             <td>
             <div class="center">
-                {#if $room && currentScene == $room.scene && !moving && moving_texts == null && room_described}
-                <button disabled={moving || !$room.directions.south} on:click="{() => move(2)}" >South</button>
+                {#if room && currentScene == room.scene && !moving && moving_texts == null && room_described}
+                <button disabled={moving || !room.directions.south} on:click="{() => move(2)}" >South</button>
                 {/if}
             </div>
             </td>
@@ -203,7 +206,7 @@ tr {
                     {/if}
                 {/if}
 
-                {#if !moving && room_described && currentScene != $room.scene}
+                {#if !moving && room_described && currentScene != room.scene}
                     <button on:click="{() => backScene()}" >back</button>
                 {/if}
                 

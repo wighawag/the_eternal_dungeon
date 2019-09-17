@@ -1,5 +1,5 @@
 <script>
-	import Room from '../components/Room.svelte';
+	import Dungeon from '../components/Dungeon.svelte';
 	import Adventurer from '../components/Adventurer.svelte';
 </script>
 
@@ -13,6 +13,6 @@
 	<Adventurer/>
 	<hr/>
 </div>
-<Room/>
+<Dungeon/>
 
 
