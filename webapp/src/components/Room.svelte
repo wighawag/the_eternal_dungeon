@@ -1,10 +1,7 @@
 <script>
 export let room;
-export let utils;
-export let dungeon;
 
 import TypeWriterText from './TypeWriterText.svelte';
-import {pause} from '../utils/time';
 import { typewriter } from '../transitions';
 import { room_to_room } from '../db'
 
@@ -21,8 +18,7 @@ async function performChoice(choice) {
     room_described = false;
     roomStage = 0;
     text_while_moving();
-    const receipt = await choice.perform().then(utils.waitReceipt); // TODO try catch
-    await dungeon.once('block', (block) => block >= receipt.blockNumber);
+    const receipt = await room.act(choice)
     console.log('done', receipt);
     moving = false;
     currentScene = room.scene;
@@ -35,18 +31,18 @@ async function move(direction) {
     text_while_moving();
     let receipt;
     let failed = false;
-    try{
-        receipt = await dungeon.move(direction).then(utils.waitReceipt);
-    } catch(e){
+    try {
+        receipt = await room.move(direction);
+    } catch(e) {
         console.log('ERROR move', e);
         failed = true;
+        roomStage = 999;
+        room_described = true;
     }
     if(failed) {
         roomStage = 999;
         room_described = true;
-        // TODO error showing...
     } else {
-        await dungeon.once('block', (block) => block >= receipt.blockNumber);
         console.log('done', receipt);
         currentScene = room.scene;
         // TODO currentScene.description.unshift('You reach into the next room');
@@ -56,10 +52,36 @@ async function move(direction) {
 
 let breadcrumb = [];
 async function readScene(scene) {
-    roomStage = 0;
-    breadcrumb.push(currentScene);
-    room_described = false;
-    currentScene = scene;
+    if(typeof scene.actionIndex != 'undefined') {
+        moving = true;
+        room_described = false;
+        roomStage = 0;
+        text_while_acting(scene);
+        let receipt;
+        let failed = false;
+        try{
+            await room.act(scene.actionIndex);
+        } catch(e) {
+            console.log('ERROR move', e);
+            failed = true;
+            roomStage = 999;
+            room_described = true;
+        }
+        if(failed) {
+            roomStage = 999;
+            room_described = true;
+        } else {
+            console.log('done', receipt);
+            currentScene = room.scene;
+            // TODO currentScene.description.unshift('You reach into the next room');
+        }
+        moving = false;
+    } else {
+        roomStage = 0;
+        breadcrumb.push(currentScene);
+        room_described = false;
+        currentScene = scene;
+    }
 }
 
 async function backScene(scene) {
@@ -70,6 +92,11 @@ async function backScene(scene) {
 async function text_while_moving() {
     currentStage = 0;
     moving_texts = room_to_room[Math.floor(Math.random()*room_to_room.length)];
+}
+
+async function text_while_acting(scene) {
+    currentStage = 0;
+    moving_texts = scene.description;
 }
 </script>
 
@@ -112,7 +139,7 @@ tr {
 
 <div class="content">
 {#if room} <!-- description of the current room -->
-    <h3>Room xxx</h3>
+    <h3>{currentScene.name}</h3>
     {#if moving_texts != null}
         <TypeWriterText texts={moving_texts} charTime=50 bind:stage={currentStage} on:done="{() => {moving_texts=null; currentStage=0;}}"/>
     {:else if moving}
