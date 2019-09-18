@@ -5,6 +5,7 @@ import { dungeon } from '../stores/dungeon.js';
 let rooms = {
     'final' : {
         scene: {
+            id: 'entrance',
             name: 'The Entrance',
             description: [
                 'You finally reached the entrance of the dungeon. From the number of skeleton around the massive door, you guess many have tempted to reached inside.',

@@ -13,18 +13,24 @@ let roomStage = 0;
 let error;
 
 let currentScene = room.scene;
-async function performChoice(choice) {
-    moving = true;
-    room_described = false;
-    roomStage = 0;
-    text_while_moving();
-    const receipt = await room.act(choice)
-    console.log('done', receipt);
-    moving = false;
-    currentScene = room.scene;
+let texts;
+$: rootScene = room.scene;
+$: {
+    if (global.previousScene && currentScene.entryDescriptions) {
+        if(global.previousScene.id && currentScene.entryDescriptions[global.previousScene.id]) {
+            texts = currentScene.entryDescriptions[global.previousScene.id];
+        } else if (currentScene.entryDescriptions['default']){
+            texts = currentScene.entryDescriptions['default'];    
+        } else {
+            texts = currentScene.description;
+        }
+    } else {
+        texts = currentScene.description;
+    }
 }
 
 async function move(direction) {
+    global.previousScene = currentScene;
     moving = true;
     room_described = false;
     roomStage = 0;
@@ -53,6 +59,7 @@ async function move(direction) {
 let breadcrumb = [];
 async function readScene(scene) {
     if(typeof scene.actionIndex != 'undefined') {
+        global.previousScene = currentScene;
         moving = true;
         room_described = false;
         roomStage = 0;
@@ -146,9 +153,7 @@ tr {
         <!-- <p>...</p> -->
         <p in:typewriter="{{ charTime: 100 }}">..............................................................</p>
     {:else} 
-        <TypeWriterText texts={currentScene.description} charTime=50 bind:stage={roomStage} on:nomoretext="{() => {room_described=true;}}"/>    
-    <!-- <p>{room.scene.description}</p>  -->
-        <!-- <p in:typewriter>{room.scene.description}</p>  -->
+        <TypeWriterText texts="{texts}" charTime=50 bind:stage={roomStage} on:nomoretext="{() => {room_described=true;}}"/>
     {/if}
 {/if}
 
@@ -172,7 +177,7 @@ tr {
 
             <td>
             <div class="center">
-                {#if room && currentScene == room.scene && !moving && moving_texts == null && room_described}
+                {#if room && currentScene == rootScene && !moving && moving_texts == null && room_described}
                 <button disabled={moving || !room.directions.north} on:click="{() => move(0)}" >North</button> 
                 {/if}
             </div>
@@ -191,7 +196,7 @@ tr {
             <td><div></div></td>
             <td>
             <div class="center">
-                {#if room && currentScene == room.scene && !moving && moving_texts == null && room_described}
+                {#if room && currentScene == rootScene && !moving && moving_texts == null && room_described}
                 <button disabled={moving || !room.directions.west} on:click="{() => move(3)}" >West</button>
                 {/if}
             </div>
@@ -199,7 +204,7 @@ tr {
             <td><div></div></td> 
             <td>
             <div class="center">
-                {#if room && currentScene == room.scene && !moving && moving_texts == null && room_described}
+                {#if room && currentScene == rootScene && !moving && moving_texts == null && room_described}
                 <button disabled={moving || !room.directions.east} on:click="{() => move(1)}" >East</button>
                 {/if}
             </div>
@@ -218,7 +223,7 @@ tr {
             <td><div></div></td>
             <td>
             <div class="center">
-                {#if room && currentScene == room.scene && !moving && moving_texts == null && room_described}
+                {#if room && currentScene == rootScene && !moving && moving_texts == null && room_described}
                 <button disabled={moving || !room.directions.south} on:click="{() => move(2)}" >South</button>
                 {/if}
             </div>
@@ -233,7 +238,7 @@ tr {
                     {/if}
                 {/if}
 
-                {#if !moving && room_described && currentScene != room.scene}
+                {#if !moving && room_described && currentScene != rootScene}
                     <button on:click="{() => backScene()}" >back</button>
                 {/if}
                 

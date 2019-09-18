@@ -84,7 +84,7 @@ contract Dungeon {
 
     function join(address payable _newDelegate) external payable {
         require(!players[msg.sender].inDungeon, "already in dungeon");
-        players[msg.sender].inDungeon = true;
+        players[msg.sender].inDungeon = true; // TODO timestamp of entry ?
         
         if(_newDelegate != address(0)) {
             _refill(msg.value - MIN_BALANCE);

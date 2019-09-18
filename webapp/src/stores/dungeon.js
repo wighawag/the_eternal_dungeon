@@ -11,6 +11,12 @@ import axios from 'axios';
 const hallDesc = {
 	scene: {
 		name: 'The hall',
+		entryDescriptions: {
+			'entrance' : [
+				'As you enter the dungeon, the door slam behind you. Fear establish itself but you have to go over it',
+				'The room you entered is quite big with an impressive cross arch on the ceiling. The walls are all white. In the middle stand a statue and in the corner, you can notice a sort of box.',	
+			],
+		} ,
 		description: [
 			'The room is quite big with an impressive cross arch on the ceiling. The walls are all white. In the middle stand a statue and in the corner, you can notice a sort of box.',
 		],
@@ -23,8 +29,7 @@ const hallDesc = {
 						name: 'press mechanism',
 						description: [
 							'As you press the mechanism, you feel underneath like something is moving',
-							'The box is opening...',
-							'Nothing inside' // TODO remove
+							'The box is opening...'
 						],
 						actionIndex: 0, // transition text is description ?
 					},
@@ -47,7 +52,7 @@ const hallDesc = {
 const rooms = [
 	{
 		scene: {
-			name: 'The random',
+			name: 'A random room',
 			description: [
 				'As you reach into the next room, you smells something horrible, like some rotten eggs. Then you realize why, the walls seems to covered by some sort of fungi. Nothing else seems to be present here.',
 			],
@@ -77,7 +82,7 @@ const rooms = [
 	},
 	{
 		scene: {
-			name: 'The lair',
+			name: 'Another room',
 			description: [
 				'The next room is filled with smoke',
 				'Inside, you quickly noticed some being sitting in the middle. He looks at you in a way that makes you feel umcomfortable',
