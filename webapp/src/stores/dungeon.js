@@ -1,12 +1,7 @@
 import { writable, readable, derived } from 'svelte/store';
-import Web3 from 'web3';
 import Dungeon from '../../../contracts/dungeon';
 import BN from 'bn.js';
-import { pause } from '../utils/time';
-import NiftyGatewayJS from 'niftygateway';
-import Portis from '@portis/web3';
-import { Bitski, AuthenticationStatus } from 'bitski';
-import axios from 'axios';
+import wallet from './wallet';
 
 const hallDesc = {
 	scene: {
@@ -118,372 +113,49 @@ function generateRandomKey() {
 	return Array.from(arr, dec2hex).join('')
 }
 
+export const dungeon = derived(wallet, async ($wallet, set) => {
+    // function _set(obj) {
+    //     let diff = 0;
+    //     for (let key of Object.keys(obj)) {
+    //         if ($data[key] !== obj[key]) {
+    //             $data[key] = obj[key];
+    //             diff++;
+    //         }
+    //     }
+    //     if (diff > 0) {
+    //         log.info('CONTRACT DATA', JSON.stringify($data, null, '  '));
+    //         set($data);
+    //     }
+	// }
 
-async function fetchChainInfos() {
-	const validChains = [];
-	let contracts;
-	try {
-		const response = await axios.get('contracts');
-		contracts = response.data;
-		for (let chainId of Object.keys(contracts)) {
-			validChains.push(chainId);
-		}
-	} catch (e) {
-		console.error('no contracts configured');
-	}
-	return { validChains, contracts };
-}
+	if ($wallet.status === 'Ready') {
+		set('loading')
+		const d = await loadDungeon($wallet);
+		set(d);
+    } else {
+		set(null);
+       // TODO unload ?
+    }
+	
+});
+// 	const { subscribe, set, update } = writable();
 
-function getProviderType(provider) {
-	if (provider.isMetaMask)
-		return 'metamask';
-
-	if (provider.isTrust)
-		return 'trust';
-
-	if (provider.isGoWallet)
-		return 'goWallet';
-
-	if (provider.isAlphaWallet)
-		return 'alphaWallet';
-
-	if (provider.isStatus)
-		return 'status';
-
-	if (provider.isToshi)
-		return 'coinbase';
-
-	if (typeof window.__CIPHER__ !== 'undefined')
-		return 'cipher';
-
-	if (provider.constructor.name === 'EthereumProvider')
-		return 'mist';
-
-	if (provider.constructor.name === 'Web3FrameProvider')
-		return 'parity';
-
-	if (provider.host && provider.host.indexOf('infura') !== -1)
-		return 'infura';
-
-	if (provider.host && provider.host.indexOf('localhost') !== -1)
-		return 'localhost';
-}
-
-async function generateWeb3Status(web3, providerUsed, checkAccounts = true) {
-	if (providerUsed) {
-		localStorage.setItem('lastProvider', JSON.stringify(providerUsed));
-	}
-	const { validChains, contracts } = await fetchChainInfos();
-	let validChain = false;
-	let chainId;
-	try {
-		chainId = await web3.eth.net.getId();
-	} catch (e) {
-	}
-
-	let config;
-	if (chainId) {
-		if (validChains.indexOf('' + chainId) != -1) {
-			validChain = true;
-			DungeonInfo = contracts[chainId]['Dungeon'];
-		}
-		config = require('../../../config')(chainId)
-		if (checkAccounts) {
-			const accounts = await web3.eth.getAccounts();
-			if (accounts && accounts.length > 0) {
-				//console.log('accounts available : ' + accounts[0]);
-				return {
-					available: true,
-					validChain,
-					validChains,
-					currentChain: chainId,
-					config,
-					enabled: true,
-					account: accounts[0],
-					web3,
-				}
-			}
-			//console.log('account not available');
-		}
-	}
-
-	return {
-		available: true,
-		validChain,
-		validChains,
-		currentChain: chainId,
-		config,
-		enabled: false,
-		web3,
-	}
-}
-
-let $web3Status;
-export const web3Status = (() => {
-	const { subscribe, set, update } = writable();
-
-	set("loading");
-	window.addEventListener('load', async () => {
-		//console.log('page loaded');
-		try {
-			$web3Status = await loadWeb3Status();
-			set($web3Status);
-			if ($web3Status.enabled && $web3Status.validChain) {
-				log('dungeon', 'loading')
-				dungeon.load();
-			}
-		} catch (e) {
-			// TODO remove and ensure ti never reach there
-			console.error('LOAD STATUS ERROR', e);
-			set({ error: e });
-		}
-	});
-
-	async function loadWeb3Status() {
-		const lastProviderUsedS = localStorage.getItem('lastProvider');
-		if (lastProviderUsedS) {
-			const lastProviderUsed = JSON.parse(lastProviderUsedS);
-			console.log({ lastProviderUsed })
-			if (lastProviderUsed.type == 'portis') {
-				console.log('using portis');
-				return setupPortis(lastProviderUsed.params);
-			} else if (lastProviderUsed.type == 'bitski') {
-				console.log('using bitski');
-				return setupBitski(lastProviderUsed.params);
-			} else {
-				return setupBuiltInWallet();
-			}
-		}
-
-		const { validChains, contracts } = await fetchChainInfos();
-		const { provider, checkAccounts, providerType } = getBuiltInProvider();
-		return {
-			firstTime: true,
-			available: !!provider,
-			validChains,
-			enabled: false
-		}
-	}
-
-	async function setupPortis(chainName) {
-		const portis = new Portis('c01effe4-fa7d-496b-9732-105080c3db96', chainName); //'rinkeby'); // 'mainnet');
-		// {
-		// 	nodeUrl: 'http://localhost:8545',
-		// 	// chainId: 1,
-		// 	nodeProtocol: 'rpc',
-		//   });
-		const web3 = new Web3(portis.provider);
-		window.web3 = web3;
-		window.portis = portis;
-		return generateWeb3Status(web3, { type: 'portis', params: chainName });
-	}
-
-	async function usePortis(chainName) {
-		$web3Status = await setupPortis(chainName)
-		set($web3Status)
-		if ($web3Status.validChain) {
-			await dungeon.load();
-		} else {
-			console.log('WRONG CHAIN IN PORTIS')
-			// TODO allow to manually switch for portis
-		}
-	}
-
-	async function setupBitski(chainName) {
-		const bitski = new Bitski('5234dddb-af72-4c6d-a195-ab8fcf8cae13', 'http://localhost:8080/bitski.html');
-		const bitskiProvider = bitski.getProvider({ networkName: chainName });
-		const web3 = new Web3(bitskiProvider);
-		window.web3 = web3;
-		window.bitski = bitski;
-		if (bitski.authStatus === AuthenticationStatus.Connected) {
-			console.log('already connected');
-			return generateWeb3Status(web3, { type: 'bitski', params: chainName });
-		} else if (bitski.authStatus === AuthenticationStatus.NotConnected) {
-			console.log('bitski not connected');
-		} else if (bitski.authStatus === AuthenticationStatus.Expired) {
-			console.log('bitski expired');
-		} else {
-			console.error('wrong connection status', bitski.authStatus);
-		}
-
-		const { validChains, contracts } = await fetchChainInfos();
-		const { provider, checkAccounts, providerType } = getBuiltInProvider();
-		return {
-			firstTime: true,
-			available: !!provider,
-			validChains,
-			enabled: false
-		}
-	}
-
-	async function useBitski(chainName) {
-		$web3Status = await setupBitski(chainName)
-		if (!$web3Status.enabled) {
-			await bitski.signIn(); // force popup
-			$web3Status = await generateWeb3Status(web3, { type: 'bitski', params: chainName });
-		}
-		set($web3Status)
-		if ($web3Status.validChain) {
-			await dungeon.load();
-		} else {
-			console.log('WRONG CHAIN IN BITSKI')
-			// TODO allow to manually switch for portis
-		}
-	}
-
-	function getBuiltInProvider() {
-		let provider;
-		let checkAccounts = true;
-		let providerType;
-		if (window.ethereum) {
-			provider = window.ethereum;
-			providerType = getProviderType(window.ethereum);
-
-			if (typeof providerType == 'undefined') {
-				checkAccounts = false;// TODO only for navigator.userAgent.indexOf("Opera");
-				console.log('unknown provider type');
-			} else {
-				console.log({ providerType });
-			}
-		} else if (window.web3) {
-			provider = window.web3.currentProvider;
-		}
-		return { provider, checkAccounts, providerType };
-	}
-
-	async function setupBuiltInWallet() {
-
-		const { provider, checkAccounts, providerType } = getBuiltInProvider();
-		if (!provider) {
-			return {
-				available: false,
-			}
-		}
-
-		const web3 = new Web3(provider);
-		window.web3 = web3;
-		return generateWeb3Status(web3, { type: providerType }, checkAccounts);
-	}
-
-	async function useBuiltInWallet() {
-		$web3Status = await setupBuiltInWallet()
-		set($web3Status)
-		if ($web3Status.validChain) {
-			await dungeon.load();
-		} else {
-			// TODO allow to manually switch for portis
-		}
-	}
-
-	async function useNiftyGateway() {
-		$web3Status = await setupNiftyGateway()
-		set($web3Status)
-		if ($web3Status.validChain) {
-			await dungeon.load();
-		} else {
-			// TODO allow to manually switch for portis
-		}
-	}
-
-	async function setupNiftyGateway() {
-		$web3Status.enabling = true;
-		set($web3Status); // TODO set({enabling:true});
-		var nftg = new NiftyGatewayJS('rinkeby', process.env.NIFTYGATEWAY_DEVKEY);
-		window.nftg = nftg;
-		console.log(nftg);
-		const nftgUser = await nftg.getWalletAndEmailAddress(); //didSucceed, emailAddress, walletAddress
-		console.log(nftgUser);
-		if (nftgUser.didSucceed) {
-			$web3Status.enabled = true;
-			$web3Status.available = true;
-			$web3Status.account = nftgUser.walletAddress;
-		}
-		$web3Status.enabling = false;
-		return $web3Status;
-	}
-
-	async function enable() {
-		try {
-			log('wallet', 'enabling');
-			$web3Status.enabling = true;
-			set($web3Status); // TODO set({enabling:true});
-			let accounts = await web3.eth.getAccounts();
-			log('wallet', 'getAccounts', accounts);
-			if (!accounts || accounts.length == 0) {
-				try {
-					accounts = await web3.currentProvider.enable();
-					log('wallet', 'enable', accounts);
-				} catch (e) {
-					log('wallet', 'enable rejection');
-				}
-
-				// Metamask no privacy allow you to fetch account here even though the user did not enable
-				if (!accounts || accounts.length == 0) {
-					log('wallet', 'no accounts, fetching...');
-					const testAccounts = await web3.eth.getAccounts();
-					log('wallet', 'getAccounts again', testAccounts);
-					accounts = testAccounts; // TODO remove ?
-				}
-			}
-
-			if (accounts && accounts.length > 0) {
-				log('wallet', 'enabled account : ' + accounts[0]);
-				$web3Status.enabled = true;
-				$web3Status.account = accounts[0];
-			} else {
-				log('wallet', 'not enabled');
-				$web3Status.enabled = false;
-			}
-			$web3Status.enabling = false;
-		} catch (e) {
-			console.error('ENABLING ERROR', e);
-			$web3Status.enabling = false;
-			// throw new Error("not enabled");
-		}
-		set($web3Status);
-	}
-	return { enable, subscribe, useNiftyGateway, usePortis, useBitski, useBuiltInWallet };
-})()
+// 	async function load() {
+// 		set("loading");
+// 		try {
+// 			const dungeon = await loadDungeon();
+// 			set(dungeon);
+// 		} catch (e) {
+// 			console.error(e);
+// 			set({ error: e });
+// 		}
+// 	}
+// 	return { load, subscribe };
+// })()
 
 
-export const dungeon = (() => {
-	const { subscribe, set, update } = writable();
-
-	async function load() {
-		set("loading");
-		try {
-			const dungeon = await loadDungeon();
-			set(dungeon);
-		} catch (e) {
-			console.error(e);
-			set({ error: e });
-		}
-	}
-	return { load, subscribe };
-})()
-
-
-async function loadDungeon() {
-
-	if (!($web3Status.available)) {
-		throw new Error('web3 not available');
-	}
-	const web3 = $web3Status.web3;
-
-
-	if (!$web3Status.enabled) {
-		try {
-			await web3Status.enable();
-		} catch (e) {
-			throw new Error('web3 enabling error');
-		}
-		if (!$web3Status.enabled) {
-			console.log('still not enabled');
-			return;
-		}
-	}
-
-	const player = $web3Status.account.toLowerCase();
+async function loadDungeon($wallet) {
+	const player = $wallet.address.toLowerCase();
 	console.log({ player });
 
 	let key;
@@ -507,38 +179,492 @@ async function loadDungeon() {
 		console.log('reusing : ', key);
 	}
 
-	const dungeon = new Dungeon(web3.currentProvider, DungeonInfo.address, DungeonInfo.contractInfo.abi, {
+	const dungeon = new Dungeon(
+		window.ethereum,
+		'0xAD994DEDAaB665ce5aad2a333253E30708087149',
+		[
+			{
+			  "constant": true,
+			  "inputs": [
+				{
+				  "name": "location",
+				  "type": "uint256"
+				}
+			  ],
+			  "name": "debug_room",
+			  "outputs": [
+				{
+				  "name": "blockNumber",
+				  "type": "uint256"
+				},
+				{
+				  "name": "exits",
+				  "type": "uint8"
+				},
+				{
+				  "name": "kind",
+				  "type": "uint8"
+				},
+				{
+				  "name": "",
+				  "type": "uint256"
+				},
+				{
+				  "name": "numRooms",
+				  "type": "uint64"
+				},
+				{
+				  "name": "numExits",
+				  "type": "uint32"
+				}
+			  ],
+			  "payable": false,
+			  "stateMutability": "view",
+			  "type": "function",
+			  "signature": "0x19132a72"
+			},
+			{
+			  "constant": false,
+			  "inputs": [
+				{
+				  "name": "_newDelegate",
+				  "type": "address"
+				}
+			  ],
+			  "name": "join",
+			  "outputs": [],
+			  "payable": true,
+			  "stateMutability": "payable",
+			  "type": "function",
+			  "signature": "0x28ffe6c8"
+			},
+			{
+			  "constant": true,
+			  "inputs": [
+				{
+				  "name": "",
+				  "type": "uint256"
+				}
+			  ],
+			  "name": "blockHashes",
+			  "outputs": [
+				{
+				  "name": "",
+				  "type": "bytes32"
+				}
+			  ],
+			  "payable": false,
+			  "stateMutability": "view",
+			  "type": "function",
+			  "signature": "0x34cdf78d"
+			},
+			{
+			  "constant": false,
+			  "inputs": [],
+			  "name": "refill",
+			  "outputs": [],
+			  "payable": true,
+			  "stateMutability": "payable",
+			  "type": "function",
+			  "signature": "0x538e0759"
+			},
+			{
+			  "constant": true,
+			  "inputs": [
+				{
+				  "name": "playerAddress",
+				  "type": "address"
+				}
+			  ],
+			  "name": "getPlayer",
+			  "outputs": [
+				{
+				  "name": "location",
+				  "type": "uint256"
+				},
+				{
+				  "name": "energy",
+				  "type": "uint256"
+				},
+				{
+				  "name": "inDungeon",
+				  "type": "bool"
+				}
+			  ],
+			  "payable": false,
+			  "stateMutability": "view",
+			  "type": "function",
+			  "signature": "0x5c12cd4b"
+			},
+			{
+			  "constant": false,
+			  "inputs": [
+				{
+				  "name": "location",
+				  "type": "uint256"
+				},
+				{
+				  "name": "blockHash",
+				  "type": "bytes32"
+				},
+				{
+				  "name": "numRoomsAtDiscovery",
+				  "type": "uint256"
+				},
+				{
+				  "name": "numExitsAtDiscovery",
+				  "type": "uint256"
+				}
+			  ],
+			  "name": "generateExits",
+			  "outputs": [
+				{
+				  "name": "",
+				  "type": "uint8"
+				},
+				{
+				  "name": "",
+				  "type": "uint8"
+				}
+			  ],
+			  "payable": false,
+			  "stateMutability": "nonpayable",
+			  "type": "function",
+			  "signature": "0x5f74cfed"
+			},
+			{
+			  "constant": false,
+			  "inputs": [
+				{
+				  "name": "_delegate",
+				  "type": "address"
+				}
+			  ],
+			  "name": "removeDelegate",
+			  "outputs": [],
+			  "payable": false,
+			  "stateMutability": "nonpayable",
+			  "type": "function",
+			  "signature": "0x67e7646f"
+			},
+			{
+			  "constant": true,
+			  "inputs": [
+				{
+				  "name": "location",
+				  "type": "uint256"
+				}
+			  ],
+			  "name": "getRoom",
+			  "outputs": [
+				{
+				  "name": "blockNumber",
+				  "type": "uint256"
+				},
+				{
+				  "name": "exits",
+				  "type": "uint8"
+				},
+				{
+				  "name": "kind",
+				  "type": "uint8"
+				},
+				{
+				  "name": "",
+				  "type": "uint256"
+				},
+				{
+				  "name": "numRooms",
+				  "type": "uint64"
+				},
+				{
+				  "name": "numExits",
+				  "type": "uint32"
+				}
+			  ],
+			  "payable": false,
+			  "stateMutability": "view",
+			  "type": "function",
+			  "signature": "0x6d8a74cb"
+			},
+			{
+			  "constant": false,
+			  "inputs": [
+				{
+				  "name": "_delegate",
+				  "type": "address"
+				}
+			  ],
+			  "name": "_addDelegate",
+			  "outputs": [],
+			  "payable": true,
+			  "stateMutability": "payable",
+			  "type": "function",
+			  "signature": "0x8473762a"
+			},
+			{
+			  "constant": false,
+			  "inputs": [
+				{
+				  "name": "location",
+				  "type": "uint256"
+				}
+			  ],
+			  "name": "actualiseRoom",
+			  "outputs": [],
+			  "payable": false,
+			  "stateMutability": "nonpayable",
+			  "type": "function",
+			  "signature": "0x8d94073c"
+			},
+			{
+			  "constant": false,
+			  "inputs": [
+				{
+				  "name": "blockNumber",
+				  "type": "uint64"
+				}
+			  ],
+			  "name": "actualiseBlock",
+			  "outputs": [
+				{
+				  "name": "",
+				  "type": "bytes32"
+				}
+			  ],
+			  "payable": false,
+			  "stateMutability": "nonpayable",
+			  "type": "function",
+			  "signature": "0x8e499127"
+			},
+			{
+			  "constant": false,
+			  "inputs": [
+				{
+				  "name": "delegate",
+				  "type": "address"
+				},
+				{
+				  "name": "player",
+				  "type": "address"
+				}
+			  ],
+			  "name": "isDelegateFor",
+			  "outputs": [
+				{
+				  "name": "",
+				  "type": "bool"
+				}
+			  ],
+			  "payable": false,
+			  "stateMutability": "nonpayable",
+			  "type": "function",
+			  "signature": "0xc23a2465"
+			},
+			{
+			  "constant": false,
+			  "inputs": [
+				{
+				  "name": "blockNumber",
+				  "type": "uint64"
+				},
+				{
+				  "name": "blockHash",
+				  "type": "bytes32"
+				}
+			  ],
+			  "name": "start",
+			  "outputs": [],
+			  "payable": false,
+			  "stateMutability": "nonpayable",
+			  "type": "function",
+			  "signature": "0xca6aca51"
+			},
+			{
+			  "constant": false,
+			  "inputs": [
+				{
+				  "name": "_delegate",
+				  "type": "address"
+				}
+			  ],
+			  "name": "addDelegate",
+			  "outputs": [],
+			  "payable": true,
+			  "stateMutability": "payable",
+			  "type": "function",
+			  "signature": "0xe71bdf41"
+			},
+			{
+			  "constant": false,
+			  "inputs": [
+				{
+				  "name": "sender",
+				  "type": "address"
+				},
+				{
+				  "name": "direction",
+				  "type": "uint8"
+				}
+			  ],
+			  "name": "move",
+			  "outputs": [],
+			  "payable": false,
+			  "stateMutability": "nonpayable",
+			  "type": "function",
+			  "signature": "0xea01a648"
+			},
+			{
+			  "constant": false,
+			  "inputs": [],
+			  "name": "quit",
+			  "outputs": [],
+			  "payable": false,
+			  "stateMutability": "nonpayable",
+			  "type": "function",
+			  "signature": "0xfc2b8cc3"
+			},
+			{
+			  "inputs": [
+				{
+				  "name": "_owner",
+				  "type": "address"
+				},
+				{
+				  "name": "_minBalance",
+				  "type": "uint256"
+				}
+			  ],
+			  "payable": false,
+			  "stateMutability": "nonpayable",
+			  "type": "constructor",
+			  "signature": "constructor"
+			},
+			{
+			  "anonymous": false,
+			  "inputs": [
+				{
+				  "indexed": true,
+				  "name": "location",
+				  "type": "uint256"
+				},
+				{
+				  "indexed": false,
+				  "name": "blockNumber",
+				  "type": "uint64"
+				},
+				{
+				  "indexed": false,
+				  "name": "numRooms",
+				  "type": "uint64"
+				},
+				{
+				  "indexed": false,
+				  "name": "numExits",
+				  "type": "uint32"
+				}
+			  ],
+			  "name": "RoomDiscovered",
+			  "type": "event",
+			  "signature": "0x58712f0c2676897a1f5fcc66a2a65ea37f397efd6f96b30ec93a80070b3c9b89"
+			},
+			{
+			  "anonymous": false,
+			  "inputs": [
+				{
+				  "indexed": true,
+				  "name": "location",
+				  "type": "uint256"
+				},
+				{
+				  "indexed": false,
+				  "name": "blockHash",
+				  "type": "bytes32"
+				},
+				{
+				  "indexed": false,
+				  "name": "exits",
+				  "type": "uint8"
+				},
+				{
+				  "indexed": false,
+				  "name": "kind",
+				  "type": "uint8"
+				},
+				{
+				  "indexed": false,
+				  "name": "numRooms",
+				  "type": "uint64"
+				},
+				{
+				  "indexed": false,
+				  "name": "numExits",
+				  "type": "uint32"
+				}
+			  ],
+			  "name": "RoomActualised",
+			  "type": "event",
+			  "signature": "0xcf85dd5b0e0e54647738b98924e08b0526c251f07c4c8ecac8c8989410cc24e3"
+			},
+			{
+			  "anonymous": false,
+			  "inputs": [
+				{
+				  "indexed": true,
+				  "name": "player",
+				  "type": "address"
+				},
+				{
+				  "indexed": true,
+				  "name": "oldLocation",
+				  "type": "uint256"
+				},
+				{
+				  "indexed": true,
+				  "name": "newLocation",
+				  "type": "uint256"
+				}
+			  ],
+			  "name": "PlayerMoved",
+			  "type": "event",
+			  "signature": "0x717c71b7226e13a6b97d602aded90ba7f6af22014b5c12d972f442a87cd2d50b"
+			},
+			{
+			  "anonymous": false,
+			  "inputs": [
+				{
+				  "indexed": false,
+				  "name": "location",
+				  "type": "uint256"
+				},
+				{
+				  "indexed": false,
+				  "name": "target",
+				  "type": "int256"
+				},
+				{
+				  "indexed": false,
+				  "name": "random",
+				  "type": "uint256"
+				}
+			  ],
+			  "name": "Debug",
+			  "type": "event",
+			  "signature": "0x6310a54c63254f8e28e3c79fb46d37c31d885c3913bef733c67ba79b59876f05"
+			}
+		],
+		{
 		logLevel: 'trace',
 		blockInterval: 12,
-		price: $web3Status.config.price,
+		price: 1 // TODO config.price[$wallet.chainId],
 	});
 	await dungeon.init(player, key);  // TODO on accounts changed, need to reset // easiest solution : reload page on account change
 
-	window.web3 = web3; // DEBUGING
 	window.BN = BN;
 	window.dungeon = dungeon;
 
 	return dungeon;
 }
-
-// export const web3Status = readable(null, function start(set) {
-//     set("loading");
-//     window.addEventListener('load', async () => {
-// 		try{
-//             $web3Status = await loadWeb3Status();
-// 			set($web3Status);
-// 		} catch(e) {
-// 			console.error(e);
-// 			set({error:e});
-// 		}
-// 	});	
-// });
-
-
-
-// export const balanceInETH = derived(loading, (set) => {
-
-// })
 
 function deriveFromDungeon(event, fieldName) {
 	return derived(dungeon, ($dungeon, set) => {
@@ -615,41 +741,3 @@ export const room = derived([dungeon, playerLocation, roomBlockUpdate], ([$dunge
 		set(textify(roomDesc));
 	}
 })
-
-// export const room_description = derived([dungeon, playerLocation], ([$dungeon, $playerLocation]) => {
-//     if($playerLocation && $dungeon && !$dungeon.error) {
-//         const hash = $dungeon.rooms[$playerLocation].hash;
-//         return "Corpses lie all around you. A small fountain is at the center of the room. The smell make you want to vomit..";
-//     }
-// }, "");
-
-// export const directions = derived([dungeon, playerLocation], ([$dungeon, $playerLocation], set) => {
-//     if($playerLocation && $dungeon && !$dungeon.error) {
-//         console.log('computing room choices')
-// 		const room = $dungeon.rooms[$playerLocation];
-//         console.log(room);
-//         const $directions = $dungeon.allExitsFor(room);
-//         set($directions);
-//     }
-// }, []);
-
-// export const choices = derived([dungeon, playerLocation], ([$dungeon, $playerLocation], set) => {
-//     if($playerLocation && $dungeon && !$dungeon.error) {
-//         // console.log('computing room choices')
-// 		// const room = $dungeon.rooms[$playerLocation];
-//         // console.log(room);
-//         // const choices = [];
-//         // function move(direction) {
-//         //     return function() {
-//         //         console.log('moving towards ' + direction);
-//         //         return $dungeon.move(direction);
-//         //     }
-//         // }
-//         // const allExits = $dungeon.allExitsFor(room);
-//         // if(allExits.north) { choices.push({type: 'north', name:'Go North', perform: move(0)}); }
-//         // if(allExits.east) { choices.push({type: 'east', name:'Go East', perform: move(1)}); }
-//         // if(allExits.south) { choices.push({type: 'south', name:'Go South', perform: move(2)}); }
-//         // if(allExits.west) { choices.push({type: 'west', name:'Go West', perform: move(3)}); }
-//         // set(choices);
-//     }
-// }, []);

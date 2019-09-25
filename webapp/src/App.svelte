@@ -1,5 +1,6 @@
 <script>
-	import { dungeon, web3Status, playerLocation, playerInDungeon, newAddress, playerEnergy } from './stores/dungeon.js';
+	import { dungeon, playerLocation, playerInDungeon, newAddress, playerEnergy } from './stores/dungeon.js';
+	import wallet from './stores/wallet';
 	import GameScreen from './screens/GameScreen.svelte';
 	import LoadingScreen from './screens/LoadingScreen.svelte';
 	import DungeonLoadingScreen from './screens/DungeonLoadingScreen.svelte';
@@ -44,10 +45,10 @@
 			<EnterScreen/>
 		{/if}
 	{/if}
-{:else if $web3Status && $web3Status != "loading"}
-	{#if !$web3Status.available}
+{:else if $wallet && $wallet.status != "Loading"}
+	{#if $wallet.status !== 'Ready'}
 		<Web3RequirementScreen/>
-	{:else if $web3Status.firstTime}
+	<!-- {:else if $web3Status.firstTime}
 		<WalletChoiceScreen/>
 	{:else if !$web3Status.validChain}
 		<InvalidChainScreen/>
@@ -56,7 +57,7 @@
 			<Web3ConnectingScreen/>
 		{:else}
 			<Web3ConnectionScreen/>
-		{/if}
+		{/if} -->
 	{:else}
 		<DungeonLoadingScreen/>
 	{/if}
