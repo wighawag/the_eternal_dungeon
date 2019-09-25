@@ -1,7 +1,8 @@
 <script>
 import Room from './Room.svelte';
 import { room, dungeon} from '../stores/dungeon';
-const utils = $dungeon.utils;
+
+$: utils = $dungeon.utils();
 
 $: roomObj = {
     scene: $room.scene,

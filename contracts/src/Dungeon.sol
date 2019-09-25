@@ -311,7 +311,7 @@ contract Dungeon {
         inDungeon = player.inDungeon;
     }
 
-    function getRoom(uint256 location) external view returns(uint256 blockNumber, uint8 exits, uint8 kind, uint256, uint64 numRooms, uint32 numExits){
+    function getRoom(uint256 location) external view returns(uint256 blockNumber, uint8 exits, uint8 kind, uint64 numRooms, uint32 numExits){
         Room storage room = rooms[location];
         exits = room.exits;
         kind = room.kind;
@@ -321,7 +321,7 @@ contract Dungeon {
     }
 
     /////////////////////  DEBUG GETTERS //////////////// // TODO REMOVE
-    function debug_room(uint256 location) external view returns(uint256 blockNumber, uint8 exits, uint8 kind, uint256, uint64 numRooms, uint32 numExits){
+    function debug_room(uint256 location) external view returns(uint256 blockNumber, uint8 exits, uint8 kind, uint64 numRooms, uint32 numExits){
         Room storage room = rooms[location];
         exits = room.exits;
         kind = room.kind;

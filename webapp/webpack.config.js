@@ -1,3 +1,4 @@
+const path = require('path');
 const MiniCssExtractPlugin = require('mini-css-extract-plugin');
 const Dotenv = require('dotenv-webpack');
 
@@ -9,7 +10,10 @@ module.exports = {
 		bundle: ['./src/main.js']
 	},
 	resolve: {
-		extensions: ['.mjs', '.js', '.svelte']
+		extensions: ['.mjs', '.js', '.svelte'],
+		alias: {
+			'contractsInfo': path.resolve(__dirname, prod ? './src/contractsInfo.json' : './src/dev_contractsInfo.json')
+		}
 	},
 	output: {
 		path: __dirname + '/public',
