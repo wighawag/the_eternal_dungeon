@@ -35,7 +35,7 @@ const logger = console;
 export default {
     trace(...args) {
         if (process.browser) {
-            logger.trace(...args);
+            // logger.trace(...args); // todo configure levels
         }
     },
     debug(...args) {
