@@ -107,17 +107,24 @@ function generateRandomKey() {
 }
 
 let lastWalletAddress;
+let d;
 export const dungeon = derived(wallet, async ($wallet, set) => {
 	if ($wallet.status === 'Ready') {
 		if(lastWalletAddress !== $wallet.address) {
 			lastWalletAddress = $wallet.address;
 			set('loading')
-			const d = await loadDungeon($wallet);
+			d = await loadDungeon($wallet);
 			set(d);
 		}
     } else {
+		lastWalletAddress = null;
+		if (d) {
+			console.log('terminating dungeon...')
+			d.terminate();
+			// d._stopListening();
+			d = null;
+		}
 		set(null);
-       // TODO unload ?
     }
 });
 

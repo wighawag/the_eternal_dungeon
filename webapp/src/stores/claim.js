@@ -2,12 +2,18 @@ import { writable, readable, derived } from 'svelte/store';
 import wallet from './wallet';
 import { Wallet, BigNumber } from 'ethers';
 import log from '../utils/log';
+import { rebuildLocationHash } from '../utils/web';
 
-const params = window.hashParams || {};
+const hashParams = window.hashParams || {};
+const claimKey = hashParams.claimKey;
+function clearClaimKey() {
+    delete hashParams.claimKey;
+    rebuildLocationHash(hashParams);
+}
 
 let lastWalletAddress;
 const $claim = {
-    status: params.claimKey ? 'WaitingWallet' : 'None',
+    status: claimKey ? 'WaitingWallet' : 'None',
 }
 const store = (() => {
     let setter;
@@ -51,12 +57,14 @@ const store = (() => {
     
                 }
                 if(claimingTxHash && claimingTxHash !== '') {
+                    set({status: 'WaitingOldTx'});
                     const tx = await provider.getTransaction(claimingTxHash);
                     if(tx) {
                         const receipt = await tx.wait();
                         if (tx.blockNumber) {
                             if(receipt.status === 1) {
                                 _set({status: 'Claimed'});
+                                clearClaimKey();
                                 return;
                             } else {
                                 _set({status: 'Failed'});
@@ -65,6 +73,7 @@ const store = (() => {
                             const receipt = await tx.wait();
                             if(receipt.status === 1) {
                                 _set({status: 'Claimed'});
+                                clearClaimKey();
                                 return;
                             } else {
                                 _set({status: 'Failed'});
@@ -74,8 +83,7 @@ const store = (() => {
                         log.trace('cannot find tx ' + claimingTxHash);
                     }
                 }
-                log.trace({claimKey: params.claimKey});
-                const claimWallet = new Wallet(params.claimKey);
+                const claimWallet = new Wallet(claimKey);
                 
                 const claimBalance = await provider.getBalance(claimWallet.address);
                 log.trace({claimBalance});
@@ -92,9 +100,11 @@ const store = (() => {
                     set({status: 'Claiming'});
                     const tx = await signer.sendTransaction({to: $wallet.address, value, gasLimit});
                     localStorage.setItem(localStorageKeyForClaimTxHash, tx.hash);
+                    set({status: 'WaitingTx'});
                     const receipt = await tx.wait();
                     if(receipt.status === 1) {
                         _set({status: 'ClaimSuccess'});
+                        clearClaimKey();
                         return;
                     } else {
                         _set({status: 'Failed'});
@@ -102,6 +112,7 @@ const store = (() => {
                 } else {
                     _set({status: 'Gone'});
                 }
+                clearClaimKey();
             }
         } else {
             _set({status: 'WaitingWallet'});

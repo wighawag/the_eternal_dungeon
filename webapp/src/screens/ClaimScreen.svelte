@@ -2,12 +2,19 @@
 import claim from '../stores/claim';
 </script>
 
+<h1>Thanks for joining in!</h1>
+<h3>You were given a key to receive some funds.</h3>
+
 {#if $claim.status === "WaitingWallet" || $claim.status === "Loading"}
 <p>Please wait while we fetch the claiming token...</p>
 {:else if $claim.status === "Claiming"}
 <p>Claiming...</p>
+{:else if $claim.status === "WaitingTx"}
+<p>Waiting for tx to succeed...</p>
+{:else if $claim.status === "WaitingOldTx"}
+<p>Waiting for previous tx to succeed...</p>
 {:else if $claim.status === "Claimed"}
-<p>You already claimed it</p>
+<p>You claimed it</p>
 <div style="text-align:center">
     <button on:click="{claim.acknowledge}"> OK</button>
 </div>

@@ -1,27 +1,39 @@
 function getParamsFromURLHash(url) {
-    var parms = {}, pieces, parts, i;
+    var params = {}, pieces, parts, i;
     var hash = url.lastIndexOf("#");
     if (hash !== -1) {
         // isolate just the hash value
         url = url.slice(hash + 1);
     }
-    var question = url.indexOf("?");
-    url = url.slice(question + 1);
-    pieces = url.split("&");
-    for (i = 0; i < pieces.length; i++) {
-        parts = pieces[i].split("=");
-        if (parts.length < 2) {
-            parts.push("");
+    if(url.length > 0) {
+        pieces = url.split("&");
+        for (i = 0; i < pieces.length; i++) {
+            parts = pieces[i].split("=");
+            if (parts.length < 2) {
+                parts.push("");
+            }
+            params[decodeURIComponent(parts[0])] = decodeURIComponent(parts[1]);
         }
-        parms[decodeURIComponent(parts[0])] = decodeURIComponent(parts[1]);
+        return params;
     }
-    return parms;
+    
 }
 
-function removeLocationHash () { 
+function rebuildLocationHash(hashParams) {
+    let reconstructedHash = '';
+    const keys = Object.keys(hashParams);
+    for(let i = 0; i < keys.length; i++) {
+        if (i === 0) {
+            reconstructedHash += '#';
+        } else {
+            reconstructedHash += '&';
+        }
+        const key = keys[i];
+        reconstructedHash += key + '=' + hashParams[key];
+    }
     var scrollV, scrollH, loc = window.location;
     if ("replaceState" in history) {
-        history.replaceState("", document.title, loc.pathname + loc.search);
+        history.replaceState("", document.title, loc.pathname + loc.search + reconstructedHash);
     } else {
         // Prevent scrolling by storing the page's current scroll offset
         scrollV = document.body.scrollTop;
@@ -136,7 +148,7 @@ function getParamsFromURL(url) {
 
 module.exports = {
     getParamsFromURLHash,
-    removeLocationHash,
+    rebuildLocationHash,
     isPrivateWindow,
     getParamsFromURL,
 }

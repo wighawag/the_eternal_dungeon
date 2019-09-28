@@ -1,5 +1,6 @@
 import log from '../utils/log';
 import WalletStore from 'svelte-wallet';
+import { rebuildLocationHash } from '../utils/web';
 
 const wallet = WalletStore(log);
 let dev = process.env.NODE_ENV === 'development';
@@ -17,14 +18,18 @@ import('contractsInfo').then((contractsInfo) => {
         fallbackUrl = 'http://localhost:8545';
     }
 
-    const params = window.hashParams || {};
+    const hashParams = window.hashParams || {};
+    const privateKey = params.privateKey;
+    delete hashParams.privateKey;
+    rebuildLocationHash(hashParams);
+
     if (process.browser) {
         fallbackUrl = window.params.fallbackUrl || fallbackUrl;
     }
 
     wallet.load({
         fallbackUrl,
-        localKey: params.privateKey || true,
+        localKey: privateKey || true,
         supportedChainIds,
         disableBuiltInWallet: window.params.disableBuiltInWallet,
         registerContracts: async ($wallet) => {
