@@ -1,5 +1,5 @@
 function typewriter(node, { charTime = 50 }) {
-    console.log('in ' + node.textContent);
+    // console.log('in ' + node.textContent);
     const valid = (
         node.childNodes.length === 1 &&
         node.childNodes[0].nodeType === 3

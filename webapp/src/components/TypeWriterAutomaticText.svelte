@@ -20,7 +20,7 @@ for(let text of texts) {
     counter ++;
 }
 const duration = totalLength * charTime;
-console.log({duration, totalLength, texts, textIndexes, counter, charTime});
+// console.log({duration, totalLength, texts, textIndexes, counter, charTime});
 let currentText;
 let currentIndex = 0;
 function update(now) {

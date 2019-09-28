@@ -1,6 +1,7 @@
-const BN = require('bn.js');
-const ethers = require('ethers');
-const {soliditySha3} = require('web3-utils');
+import * as BN from 'bn.js';
+import * as ethers from 'ethers';
+import {soliditySha3} from 'web3-utils';
+import log from '../utils/log';
 
 function pause(duration) {
     return new Promise((res) => setTimeout(res, duration * 1000));
@@ -8,27 +9,17 @@ function pause(duration) {
 
 const Dungeon = function({ethersProvider, wallet, contract}, options) {
     options = options || {
-        logLevel: 'info',
         blockInterval: 12,
     }
     const {
-        logLevel,
         blockInterval
     } = options;
-    if(logLevel) {
-        switch(logLevel) {
-            case 'info' : this.logLevel = INFO; break;
-            case 'error' : this.logLevel = ERROR; break;
-            case 'trace' : this.logLevel = TRACE; break;
-            case 'debug' : this.logLevel = DEBUG; break;
-            default : this._info('logLevel ' + logLevel + ' not supported');
-        }
-    }
+
     this.interval = blockInterval / 2;
     this.energy = 0;
     this.playerMoved = false;
     this.callbacks = {};
-    this.price = options.price || '5000000000000000000';
+    this.price = options.price || '1000000000000000000';
 
     this.provider = ethersProvider;
     this.wallet = wallet; // to perform tx on behalf of current user
@@ -64,83 +55,21 @@ Dungeon.locationAt = function(location, dx, dy) {
     return res.toString(10);
 }
 
-//////////////////////////////////////////////////////////////////////
-const FATAL = 60;
-const ERROR = 50;
-const WARN = 40;
-const INFO = 30;
-const DEBUG = 20;
-const TRACE = 10;
-
-function traceCaller(n) {
-    if (isNaN(n) || n < 0) {
-        n = 1;
-    }
-    n += 1;
-    let s = (new Error()).stack;
-    let a = s.indexOf('\n', 5);
-    while (n--) {
-        a = s.indexOf('\n', a + 1);
-        if (a < 0) {
-            a = s.lastIndexOf('\n', s.length);
-            break;
-        }
-    }
-
-    let b = s.indexOf('\n', a + 1);
-    if (b < 0) {
-        b = s.length;
-    }
-    a = Math.max(s.lastIndexOf(' ', b), s.lastIndexOf('/', b));
-    b = s.lastIndexOf(':', b);
-    s = s.substring(a + 1, b);
-    return s;
-}
-
-
-Dungeon.prototype._error = function(...args) {
-    if (this.logLevel <= ERROR) {
-        args.unshift(traceCaller(1) + ': ');
-        Reflect.apply(console.log, console, args);
-    }
-}
-
-Dungeon.prototype._info = function(...args) {
-    if (this.logLevel <= INFO) {
-        args.unshift(traceCaller(1) + ': ');
-        Reflect.apply(console.log, console, args);
-    }
-}
-
-Dungeon.prototype._trace = function(...args) {
-    if (this.logLevel <= TRACE) {
-        args.unshift(traceCaller(1) + ': ');
-        Reflect.apply(console.log, console, args);
-    }
-}
-
-Dungeon.prototype._debug = function(...args) {
-    if (this.logLevel <= DEBUG) {
-        args.unshift(traceCaller(1) + ': ');
-        Reflect.apply(console.log, console, args);
-    }
-}
-
 Dungeon.prototype.cancelInit = async function() {
-    this._trace('canceling init...');
+    log.trace('canceling init...');
     this._stopInit = true;
     while(this.initializing) {
         await pause(1);
     }
     this._stopInit = false;
-    this._trace('canceled');
+    log.trace('canceled');
 }
 
 Dungeon.prototype.init = async function(player, delegatePrivateKey) { // TODO return same promise if any when this.player == new player
     if(this.initializing) {
         await this.cancelInit();
     }
-    this._trace('initializing...');
+    log.trace('initializing...');
     this.initializing = true;
 
     this.player = player;
@@ -152,22 +81,22 @@ Dungeon.prototype.init = async function(player, delegatePrivateKey) { // TODO re
     this.rooms = {};
 
     this.lastBlock = await this.provider.getBlockNumber();
-    this._trace({lastBlock: this.lastBlock});
+    log.trace({lastBlock: this.lastBlock});
     const playerData = await this.fetchPlayer(this.lastBlock);
     this.playerLocation = playerData.location.toString();
     this.energy = playerData.energy.toString();
     this.inDungeon = playerData.inDungeon;
 
-    this._trace({playerLocation: this.playerLocation});
+    log.trace({playerLocation: this.playerLocation});
     await this._fetchRoomsAround(this.playerLocation, this.rooms, this.lastBlock);
 
     this.isCurrentDelegate = await this.fetchIsDelegate();
-    console.log('currentDelegate', this.isCurrentDelegate);
+    // console.log('currentDelegate', this.isCurrentDelegate);
 
     this._startListening();
     this.initializing = false;
     // TODO emit reset
-    this._trace('initialized');
+    log.trace('initialized');
 }
 
 Dungeon.prototype._fetchRoomsAround = async function(centre, rooms, blockNumber)  {
@@ -293,7 +222,7 @@ Dungeon.prototype._findFirstExit = function(roomOrLocation, start) {
 
 
 // Dungeon.prototype.syncOn = async function(blockNumber) {
-//     this._trace('syncing on ' + blockNumber);
+//     log.trace('syncing on ' + blockNumber);
 //     while(true) {
 //         if(this.lastBlock == blockNumber) {
 //             return;
@@ -306,7 +235,7 @@ Dungeon.prototype._startListening = async function() {
     if(this.listening) {
         return;
     }
-    this._trace('start listening...');
+    log.trace('start listening...');
     this.listening = true;
     this._stopListeningRequested = false;
     this.interval = this.interval || 5; // TODO
@@ -320,7 +249,7 @@ Dungeon.prototype._startListening = async function() {
             const roomsAdded = [];
             const roomsRemoved = [];
             if(latestBlock > this.lastBlock) {
-                this._trace('new blocks');
+                log.trace('new blocks');
                 const newState = {};
                 newState.playerLocation = this.playerLocation;
                 newState.rooms = {};
@@ -331,7 +260,7 @@ Dungeon.prototype._startListening = async function() {
                 const playerData = await this.fetchPlayer(latestBlock);
                 if(playerData.location != this.playerLocation) {
                     newState.playerLocation = playerData.location;
-                    this._info('PlayerMoved', newState.playerLocation);
+                    log.info('PlayerMoved', newState.playerLocation);
                     newPlayerLocation = true;
                     await this._fetchRoomsAround(newState.playerLocation, newState.rooms, latestBlock);
                 }
@@ -370,15 +299,15 @@ Dungeon.prototype._startListening = async function() {
                     const newRoom = newState.rooms[roomLocation];
                     if(currentRoom) {
                         if(currentRoom.status == 'listening' && newRoom.status != 'listening') {
-                            this._info('new room from listen', roomLocation);
+                            log.info('new room from listen', roomLocation);
                             roomsAdded.push(newRoom);
                         }
                     } else {
                         if(newRoom.status != 'listening') {
-                            this._info('new room', roomLocation);
+                            log.info('new room', roomLocation);
                             roomsAdded.push(newRoom);
                         } else {
-                            this._info('new listen', roomLocation);
+                            log.info('new listen', roomLocation);
                             roomsAdded.push(newRoom);
                         }
                     }
@@ -387,10 +316,10 @@ Dungeon.prototype._startListening = async function() {
                 for(let roomLocation of Object.keys(clonedRooms)) {
                     const room = clonedRooms[roomLocation];
                     if(room.status != 'listening') {
-                        this._info('room removed', roomLocation);
+                        log.info('room removed', roomLocation);
                         roomsRemoved.push(room);
                     } else {
-                        this._info('listen removed', roomLocation);
+                        log.info('listen removed', roomLocation);
                         roomsRemoved.push(room);
                     }
                 }
@@ -437,20 +366,20 @@ Dungeon.prototype._startListening = async function() {
                 await pause(this.interval);
             }
         } catch(e) {
-            this._error(e);
+            log.error(e);
         }
     }
     this.listening = false;
-    this._trace('listening loop stopped');
+    log.trace('listening loop stopped');
 }
 
 Dungeon.prototype._stopListening = async function() {
-    this._trace('stop listening...');
+    log.trace('stop listening...');
     this._stopListeningRequested = true;
     while(this.listening) {
         await pause(1);
     }
-    this._trace('stopped');
+    log.trace('stopped');
     this._stopListeningRequested = false;
 }
 
@@ -481,13 +410,15 @@ Dungeon.prototype.move = async function(direction) {
 }
 
 Dungeon.prototype.join = async function() {
-    const gasEstimate = 4000000; // TODO await estimate({from: this.player, gas: 4000000, value: this.price}, this.contract, 'join', this.delegateWallet.address);
-    return this.wallet.tx({from: this.player, gas: gasEstimate + 15000, value: this.price}, 'Dungeon', 'join', this.delegateWallet.address);
+    let gasEstimate = ethers.BigNumber.from(4000000).toHexString();
+    // TODO await estimate({from: this.player, gas: 4000000, value: this.price}, this.contract, 'join', this.delegateWallet.address);
+    let value = ethers.BigNumber.from(this.price).toHexString();
+    return this.wallet.tx({gas: gasEstimate, value}, 'Dungeon', 'join', this.delegateWallet.address);
 }
 
 Dungeon.prototype.addDelegate = async function() {
     const gasEstimate = 4000000; // TODO await estimate({from: this.player, gas: 4000000}, this.contract, 'addDelegate', this.delegateWallet.address);
-    return this.wallet.tx({from: this.player, gas: gasEstimate + 15000}, 'Dungeon', 'addDelegate', this.delegateWallet.address);
+    return this.wallet.tx({gas: gasEstimate + 15000}, 'Dungeon', 'addDelegate', this.delegateWallet.address);
 }
 
 Dungeon.prototype.fetchRoom = async function(location, blockNumber) {
@@ -533,7 +464,7 @@ Dungeon.prototype.generateExits = function(location, hash, numRoomsAtDiscovery, 
     if(target.gt(new BN(3))) {
         target = new BN(3);
     }
-    console.log(location, target.toString(10));
+    // console.log(location, target.toString(10));
     const random = this.getRandomValue(location, hash, 1, 3);
     let numExits = target.sub(new BN(1)).add(random).toNumber();
     if(numExits < 0) {
@@ -566,7 +497,7 @@ Dungeon.prototype.generateExits = function(location, hash, numRoomsAtDiscovery, 
         exits = Math.pow(2,chosenExits);
     }
 
-    exitsBits = exits;
+    const exitsBits = exits;
     exits = {
         north: (exitsBits & 1) == 1,
         east: (exitsBits & 2) == 2,
@@ -624,12 +555,12 @@ Dungeon.prototype.fetchIsDelegate = function(block) {
 }
 
 Dungeon.prototype.terminate = async function() {
-    this._trace('TERMINATING...');
+    log.trace('TERMINATING...');
     if(this.initializing){
         await this.cancelInit();
     }
     await this._stopListening();
-    this._trace('TERMINATED');
+    log.trace('TERMINATED');
 }
 
-module.exports = Dungeon;
+export default Dungeon;

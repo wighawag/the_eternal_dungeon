@@ -1,5 +1,5 @@
 const rocketh = require('rocketh');
-const {web3, deploy, getDeployedContract, getBalance} = require('rocketh-web3')(rocketh, require('Web3'));
+const {web3, deploy, getDeployedContract, getBalance, tx} = require('rocketh-web3')(rocketh, require('Web3'));
 const Dungeon = require('../dungeon');
 
 const {
@@ -24,7 +24,11 @@ module.exports = async ({namedAccounts, isDeploymentChainId}) => {
     await deploy("Dungeon",  {from: deployer, gas}, "Dungeon", dungeonOwner, config.minBalance); // TODO configure
 
     const dungeonContract = getDeployedContract('Dungeon');
+    const latestBlock = await web3.eth.getBlock('latest');
+    const receipt = await tx({from: dungeonOwner, gas: 400000}, dungeonContract, 'start', latestBlock.number, latestBlock.hash);
+    console.log(receipt);
+
     // dungeonContract.methods.start()
-    const dungeon = new Dungeon(rocketh.ethereum, dungeonContract.options.address, dungeonContract.options.jsonInterface);
-    await dungeon.start(dungeonOwner).then(waitReceipt);
+    // const dungeon = new Dungeon(rocketh.ethereum, dungeonContract.options.address, dungeonContract.options.jsonInterface);
+    // await dungeon.start(dungeonOwner).then(waitReceipt);
 }

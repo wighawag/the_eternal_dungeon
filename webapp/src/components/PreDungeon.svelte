@@ -4,6 +4,7 @@ import { dungeon } from '../stores/dungeon.js';
 
 let rooms = {
     'final' : {
+        id: 'final',
         scene: {
             id: 'entrance',
             name: 'The Entrance',
@@ -56,6 +57,7 @@ let rooms = {
         }
     },
     'first' : {
+        id: 'first',
         scene: {
             name: 'The Test',
             description: [
@@ -95,6 +97,7 @@ let rooms = {
         }
     },
     'second': {
+        id: 'second',
         scene: {
             name: 'The dasdas',
             description: [
@@ -124,12 +127,17 @@ let rooms = {
     }
 };
 
-let room = rooms['first'];
+let player = $dungeon.player;
 
-const utils = {
-    waitReceipt: async (txHash) => {blockNumber: 1},
-};
-const dungeonObj = {
+let room = rooms[localStorage.getItem(player + '_preDungeon') || 'first'];
+
+$: if(player) { 
+    localStorage.setItem(player + '_preDungeon', room.id);
+}
+
+$: roomObj = {
+    scene: room.scene,
+    directions: room.directions,
     move: async (direction) => {
         let dirName;
         switch (direction) {
@@ -138,21 +146,17 @@ const dungeonObj = {
             case 2: dirName = 'south'; break;
             case 3: dirName = 'west'; break;
         }
-        room = rooms[room.directions[dirName]];
-        return "0xff";
-    },
-    once: async () => {}
-}
-
-$: roomObj = {
-    scene: room.scene,
-    directions: room.directions,
-    move: async (direction) => {
-        return dungeonObj.move(direction).then(utils.waitReceipt);
+        room = rooms[room.directions[dirName]]
     },
     act: async (choice) => {
-        const receipt = $dungeon.join().then(utils.waitReceipt);
-        await $dungeon.once('block', (block) => block >= receipt.blockNumber);
+        const tx = await $dungeon.join();
+        if (tx) {
+            const receipt = await tx.wait();
+            await $dungeon.once('block', (block) => block >= receipt.blockNumber);
+        } else {
+            console.error('error tx');
+            throw 'error'
+        }
     },
 };
 </script>

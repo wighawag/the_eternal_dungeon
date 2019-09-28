@@ -4,6 +4,7 @@ export let room;
 import TypeWriterText from './TypeWriterText.svelte';
 import { typewriter } from '../transitions';
 import { room_to_room } from '../db'
+import log from '../utils/log'
 
 let moving = false;
 let moving_texts = null;
@@ -35,21 +36,18 @@ async function move(direction) {
     room_described = false;
     roomStage = 0;
     text_while_moving();
-    let receipt;
     let failed = false;
     try {
-        receipt = await room.move(direction);
+        await room.move(direction);
     } catch(e) {
-        console.log('ERROR move', e);
+        log.trace('ERROR move', e);
         failed = true;
-        roomStage = 999;
-        room_described = true;
     }
     if(failed) {
         roomStage = 999;
         room_described = true;
     } else {
-        console.log('done', receipt);
+        log.trace('done moving');
         currentScene = room.scene;
         // TODO currentScene.description.unshift('You reach into the next room');
     }
@@ -69,16 +67,17 @@ async function readScene(scene) {
         try{
             await room.act(scene.actionIndex);
         } catch(e) {
-            console.log('ERROR move', e);
+            log.trace('ERROR move', e);
             failed = true;
             roomStage = 999;
             room_described = true;
+            moving_texts = null;
         }
         if(failed) {
             roomStage = 999;
             room_described = true;
         } else {
-            console.log('done', receipt);
+            log.trace('done', receipt);
             currentScene = room.scene;
             // TODO currentScene.description.unshift('You reach into the next room');
         }

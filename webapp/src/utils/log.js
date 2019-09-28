@@ -32,40 +32,67 @@ const logger = console;
 //     }
 // });
 
+function traceCaller(n) {
+    if (isNaN(n) || n < 0) {
+        n = 1;
+    }
+    n += 1;
+    let s = (new Error()).stack;
+    let a = s.indexOf('\n', 5);
+    while (n--) {
+        a = s.indexOf('\n', a + 1);
+        if (a < 0) {
+            a = s.lastIndexOf('\n', s.length);
+            break;
+        }
+    }
+
+    let b = s.indexOf('\n', a + 1);
+    if (b < 0) {
+        b = s.length;
+    }
+    a = Math.max(s.lastIndexOf(' ', b), s.lastIndexOf('/', b));
+    b = s.lastIndexOf(':', b);
+    s = s.substring(a + 1, b);
+    return s;
+}
+
+const logLevel = window.params.logLevel || 20;
+
 export default {
+    silent(...args) {
+        if (process.browser) {
+            if(logLevel >= 70) logger.silent(...args);
+        }
+    },
     trace(...args) {
         if (process.browser) {
-            // logger.trace(...args); // todo configure levels
+            if(logLevel >= 60) logger.debug(...args); //logger.trace(...args); // todo configure levels
         }
     },
     debug(...args) {
         if (process.browser) {
-            logger.debug(...args);
+            if(logLevel >= 50 ) logger.debug(...args);
         }
     },
     info(...args) {
         if (process.browser) {
-            logger.info(...args);
+            if(logLevel >= 40) logger.info(...args);
         }
     },
     warn(...args) {
         if (process.browser) {
-            logger.error(...args);
+            if(logLevel >= 30) logger.error(...args);
         }
     },
     error(...args) {
         if (process.browser) {
-            logger.error(...args);
+            if(logLevel >= 20) logger.error(...args);
         }
     },
     fatal(...args) {
         if (process.browser) {
-            logger.fatal(...args);
-        }
-    },
-    silent(...args) {
-        if (process.browser) {
-            logger.silent(...args);
+            if(logLevel >= 10) logger.fatal(...args);
         }
     },
 };

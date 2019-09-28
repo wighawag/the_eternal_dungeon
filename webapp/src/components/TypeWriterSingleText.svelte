@@ -18,11 +18,11 @@ let doneEmitted;
 function update(now) {
     if(text != lastText) {
         doneEmitted = false;
-        console.log('replacing ' + lastText + ' with ' + text);
+        // console.log('replacing ' + lastText + ' with ' + text);
         lastText = text;
         lastStartTime = now;
         duration = text.length * charTime;
-        console.log({lastStartTime, now, duration});
+        // console.log({lastStartTime, now, duration});
     }
     const t = (now - lastStartTime) / duration;
 
@@ -35,7 +35,7 @@ function update(now) {
     
     if(!doneEmitted && (now - lastStartTime > duration)) {
         doneEmitted = true;
-        console.log('DONE');
+        // console.log('DONE');
         dispatch('done');
     }
     window.requestAnimationFrame(update);

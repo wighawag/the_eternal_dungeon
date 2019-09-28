@@ -1,9 +1,16 @@
+const fs = require('fs');
 const path = require('path');
 const MiniCssExtractPlugin = require('mini-css-extract-plugin');
 const Dotenv = require('dotenv-webpack');
 
 const mode = process.env.NODE_ENV || 'development';
 const prod = mode === 'production';
+
+const contractsInfoPath = path.resolve(__dirname, './src/contractsInfo.json');
+const devContractsInfoPath = path.resolve(__dirname, './src/dev_contractsInfo.json');
+const contractsInfoExists =  fs.existsSync(contractsInfoPath);
+const devContractsInfoExists =  fs.existsSync(devContractsInfoPath);
+const contractsInfo = (prod && contractsInfoExists) ? contractsInfoPath : (devContractsInfoExists ? devContractsInfoPath : contractsInfoPath);
 
 module.exports = {
 	entry: {
@@ -12,7 +19,7 @@ module.exports = {
 	resolve: {
 		extensions: ['.mjs', '.js', '.svelte'],
 		alias: {
-			'contractsInfo': path.resolve(__dirname, prod ? './src/contractsInfo.json' : './src/dev_contractsInfo.json')
+			contractsInfo,
 		}
 	},
 	output: {

@@ -93,13 +93,6 @@ const rooms = [
 	},
 ]
 
-let DungeonInfo;
-
-function log(channel, ...args) {
-	console.log(channel, ...args);
-	// console.log.apply(console, args);
-}
-
 // dec2hex :: Integer -> String
 // i.e. 0-255 -> '00'-'ff'
 function dec2hex(dec) {
@@ -130,7 +123,6 @@ export const dungeon = derived(wallet, async ($wallet, set) => {
 
 async function loadDungeon($wallet) {
 	const player = $wallet.address.toLowerCase();
-	console.log({ player });
 
 	let key;
 	const dataS = localStorage.getItem(player); // TODO on accounts changed, need to reset // easiest solution : reload page on account change
@@ -145,12 +137,8 @@ async function loadDungeon($wallet) {
 		} catch (e) {
 			console.error('could not save to storage');
 		}
-		// TODO remove
-		console.log('new key', key);
 	} else {
 		key = data.key;
-		// TODO remove
-		console.log('reusing : ', key);
 	}
 
 	const contract = wallet.getContract('Dungeon');
@@ -163,7 +151,7 @@ async function loadDungeon($wallet) {
 		{
 			logLevel: 'trace',
 			blockInterval: 12,
-			price: '5000000000000000000' //1 // TODO config.price[$wallet.chainId],
+			price: '1000000000000000000' //1 // TODO config.price[$wallet.chainId],
 		}
 	);
 	await dungeon.init(player, key);  // TODO on accounts changed, need to reset // easiest solution : reload page on account change
@@ -236,11 +224,9 @@ function textify(room) {
 export const room = derived([dungeon, playerLocation, roomBlockUpdate], ([$dungeon, $playerLocation, $roomBlockUpdate], set) => {
 	if ($playerLocation && $dungeon && !$dungeon.error) {
 		const room = $dungeon.rooms[$playerLocation];
-		console.log('ROOM', {room});
 		const $directions = $dungeon.allExitsFor(room);
 		let roomDesc;
 		if (room.location == '0') {
-			console.log('HALL');
 			roomDesc = hallDesc;
 		} else {
 			roomDesc = rooms[$dungeon.getRandomValue(room.location, room.hash, 99, rooms.length)];
