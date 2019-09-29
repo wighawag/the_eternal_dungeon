@@ -67,12 +67,12 @@ export default {
     },
     trace(...args) {
         if (process.browser) {
-            if(logLevel >= 60) logger.debug(...args); //logger.trace(...args); // todo configure levels
+            if(logLevel >= 60) logger.info(...args); //logger.trace(...args); // todo configure levels
         }
     },
     debug(...args) {
         if (process.browser) {
-            if(logLevel >= 50 ) logger.debug(...args);
+            if(logLevel >= 50 ) logger.info(...args);
         }
     },
     info(...args) {

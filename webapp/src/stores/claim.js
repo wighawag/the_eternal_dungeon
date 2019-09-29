@@ -9,6 +9,7 @@ const claimKey = hashParams.claimKey;
 function clearClaimKey() {
     delete hashParams.claimKey;
     rebuildLocationHash(hashParams);
+    hashParams.claimKey = claimKey; // keep it in memory // TODO remove, local wallet creation need to be driven by claim
 }
 
 let lastWalletAddress;
@@ -34,11 +35,11 @@ const store = (() => {
         setter = _set;
     
         // TODO remove :
-        if ($wallet.status === 'Ready') {
-            const provider = wallet.getProvider();
-            const walletBalance = await provider.getBalance($wallet.address);
-            log.trace({walletBalance: walletBalance.toString()});
-        }
+        // if ($wallet.address) {
+        //     const provider = wallet.getProvider();
+        //     const walletBalance = await provider.getBalance($wallet.address);
+        //     log.trace({walletBalance: walletBalance.toString()});
+        // }
         /////////////////////////////
     
         if($claim.status == 'None') {
@@ -115,6 +116,7 @@ const store = (() => {
                 clearClaimKey();
             }
         } else {
+            // TODO if no wallet : create wallet (check flicker) // TODO remove login in wallet to create a private key automatically
             _set({status: 'WaitingWallet'});
         }
     }, $claim);

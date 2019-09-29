@@ -14,15 +14,6 @@
     <div style="text-align:center">
         <h3> Please accept the connection request </h3>
     </div>
-{:else if $wallet.status == 'WrongChain'}
-    <div style="text-align:center">
-        <h3> Please change your network </h3>
-        {#if $wallet.requireManualChainReload }
-            <h5 class="errorMessage">You might need to reload the page after switching to the new chain</h5>
-            <button on:click="{() => wallet.reloadPage()}">Reload</button>
-        {/if}
-    </div>
-    
 {:else if $wallet.status == 'NoWallet'}
     
     <div style="text-align:center">
@@ -54,11 +45,21 @@
     </div>
     
 {:else if $wallet.status == 'Ready'}
-    {#if $wallet.requestingTx}
-    <div style="text-align:center">
-        <h3> Please accept the transaction request </h3>
-    </div>
+    {#if $wallet.chainNotSupported}
+        <div style="text-align:center">
+            <h3> Please change your network </h3>
+            {#if $wallet.requireManualChainReload }
+                <h5 class="errorMessage">You might need to reload the page after switching to the new chain</h5>
+                <button on:click="{() => wallet.reloadPage()}">Reload</button>
+            {/if}
+        </div>
     {:else}
-    <slot></slot>    
+        {#if $wallet.requestingTx}
+        <div style="text-align:center">
+            <h3> Please accept the transaction request </h3>
+        </div>
+        {:else}
+        <slot></slot>    
+        {/if}
     {/if}
 {/if}

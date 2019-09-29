@@ -119,13 +119,16 @@ export const dungeon = derived(wallet, async ($wallet, set) => {
     } else {
 		lastWalletAddress = null;
 		if (d) {
-			console.log('terminating dungeon...')
+			// console.log('terminating dungeon...')
 			d.terminate();
 			// d._stopListening();
 			d = null;
 		}
 		set(null);
-    }
+	}
+
+	// TODO remove
+	window.dungeon = d;
 });
 
 async function loadDungeon($wallet) {

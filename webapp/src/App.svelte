@@ -20,24 +20,26 @@
 	export let name;
 </script>
 
-<WalletWrapper>
-	{#if $claim && $claim.status != "None"}
-		<ClaimScreen />
-	{:else if $dungeon && $dungeon != "loading"}
-		{#if $playerInDungeon}
-			{#if $newAddress}
-				<WelcomeBackScreen/>
-			{:else}
-				{#if $playerEnergy > 0}
-					<GameScreen/>
+{#if $claim && $claim.status != "None"}
+	<ClaimScreen />
+{:else}
+	<WalletWrapper>
+		{#if $dungeon && $dungeon != "loading"}
+			{#if $playerInDungeon}
+				{#if $newAddress}
+					<WelcomeBackScreen/>
 				{:else}
-					<RefillScreen/>
+					{#if $playerEnergy > 0}
+						<GameScreen/>
+					{:else}
+						<RefillScreen/>
+					{/if}
 				{/if}
+			{:else}
+				<EnterScreen/>
 			{/if}
 		{:else}
-			<EnterScreen/>
+			<DungeonLoadingScreen/>
 		{/if}
-	{:else}
-		<DungeonLoadingScreen/>
-	{/if}
-</WalletWrapper>
+	</WalletWrapper>
+{/if}

@@ -19,9 +19,9 @@ import('contractsInfo').then((contractsInfo) => {
     }
 
     const hashParams = window.hashParams || {};
-    const privateKey = params.privateKey;
+    const privateKey = hashParams.privateKey;
     delete hashParams.privateKey;
-    rebuildLocationHash(hashParams);
+    // TODO rebuildLocationHash(hashParams);
 
     if (process.browser) {
         fallbackUrl = window.params.fallbackUrl || fallbackUrl;
@@ -29,12 +29,12 @@ import('contractsInfo').then((contractsInfo) => {
 
     wallet.load({
         fallbackUrl,
-        localKey: privateKey || true,
+        localKey: privateKey || Boolean(hashParams.claimKey),
         supportedChainIds,
         disableBuiltInWallet: window.params.disableBuiltInWallet,
-        registerContracts: async ($wallet) => {
-            if ($wallet && $wallet.chainId) {
-                const chainId = $wallet.chainId;
+        registerContracts: async ($wallet, chainId) => {
+            if ($wallet) {
+                chainId = chainId || $wallet.chainId;
                 if (contractsInfo[chainId]) {
                     return contractsInfo[chainId];
                 } else {

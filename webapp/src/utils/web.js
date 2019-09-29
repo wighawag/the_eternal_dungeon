@@ -1,22 +1,23 @@
 function getParamsFromURLHash(url) {
-    var params = {}, pieces, parts, i;
-    var hash = url.lastIndexOf("#");
+    const obj = {};
+    const hash = url.indexOf("#"); // TODO or lastIndexOf ?
     if (hash !== -1) {
         // isolate just the hash value
         url = url.slice(hash + 1);
     }
     if(url.length > 0) {
-        pieces = url.split("&");
-        for (i = 0; i < pieces.length; i++) {
-            parts = pieces[i].split("=");
+        const pieces = url.split("&");
+        for (let i = 0; i < pieces.length; i++) {
+            const parts = pieces[i].split("=");
             if (parts.length < 2) {
                 parts.push("");
             }
-            params[decodeURIComponent(parts[0])] = decodeURIComponent(parts[1]);
+            const key = decodeURIComponent(parts[0]);
+            const value = decodeURIComponent(parts[1]); 
+            obj[key] = value;
         }
-        return params;
     }
-    
+    return obj;
 }
 
 function rebuildLocationHash(hashParams) {
@@ -130,7 +131,11 @@ function isPrivateWindow() {
 }
 
 function getParamsFromURL(url) {
-    var parms = {}, pieces, parts, i;
+    var obj = {}, pieces, parts, i;
+    var hash = url.indexOf("#");
+    if (hash !== -1) {
+        url = url.slice(0, hash);
+    }
     var question = url.indexOf("?");
     if (question != -1) {
         url = url.slice(question + 1);
@@ -140,10 +145,10 @@ function getParamsFromURL(url) {
             if (parts.length < 2) {
                 parts.push("");
             }
-            parms[decodeURIComponent(parts[0])] = decodeURIComponent(parts[1]);
+            obj[decodeURIComponent(parts[0])] = decodeURIComponent(parts[1]);
         }
     }
-    return parms;
+    return obj;
 }
 
 module.exports = {
