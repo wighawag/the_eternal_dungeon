@@ -3,8 +3,9 @@
 		"name": "The hall",
 		"entryDescriptions": {
 			"entrance" : [
-				"As you enter the dungeon, the door slam behind you. Fear establish itself but you have to go over it",
-				"The room you entered is quite big with an impressive cross arch on the ceiling. The walls are all white. In the middle stand a statue and in the corner, you can notice a sort of box."
+                "As you enter the dungeon, the door slam behind you. Fear establish itself but you have to go over it",
+                "You first descend for quite some time, and finally arrive in a room",
+				"The room is quite big with an impressive cross arch on the ceiling. The walls are all white. In the middle stand a statue and in the corner, you can notice a sort of box."
 			]
 		},
 		"description": [

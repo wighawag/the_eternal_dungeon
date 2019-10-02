@@ -413,7 +413,7 @@ Dungeon.prototype.join = async function() {
     let gasEstimate = ethers.BigNumber.from(4000000).toHexString();
     // TODO await estimate({from: this.player, gas: 4000000, value: this.price}, this.contract, 'join', this.delegateWallet.address);
     let value = ethers.BigNumber.from(this.price).toHexString();
-    return this.wallet.tx({gas: gasEstimate, value, chainId: '1569594477651'}, 'Dungeon', 'join', this.delegateWallet.address);
+    return this.wallet.tx({gas: gasEstimate, value}, 'Dungeon', 'join', this.delegateWallet.address);
 }
 
 Dungeon.prototype.addDelegate = async function() {

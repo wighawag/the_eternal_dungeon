@@ -1,8 +1,9 @@
 import log from '../utils/log';
+import * as SvelteStore from 'svelte/store';
 import WalletStore from 'svelte-wallet';
 import { rebuildLocationHash } from '../utils/web';
 
-const wallet = WalletStore(log);
+const wallet = WalletStore(SvelteStore, log);
 let dev = process.env.NODE_ENV === 'development';
 
 import('contractsInfo').then((contractsInfo) => {
