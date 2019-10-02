@@ -115,44 +115,20 @@ export const roomBlockUpdate = derived(dungeon, ($dungeon, set) => {
 })
 
 
-function textify(room) {
-	function textifyScene(scene, directions) { // origin
-		let description = scene.description;
-		if (directions) {
-			const exitsArray = [];
-			for (let exit of ['north', 'east', 'south', 'west']) {
-				if (directions[exit]) {
-					exitsArray.push(exit);
-				}
-			}
-			let exitsDescription;
-			if (exitsArray.length == 0) {
-				exitsDescription = "The room has no exits";
-			} else if (exitsArray.length == 1) {
-				exitsDescription = "The room has only one exists, on the " + exitsArray[0];
-			} else {
-				exitsDescription = 'There are ' + exitsArray.length + ' exists, on the ' + exitsArray.slice(0, exitsArray.length - 1).join(', ') + ' and ' + exitsArray[exitsArray.length - 1];
-			}
-			description.push(exitsDescription)
-		}
-		scene.description = description;
-		return scene;
-	}
-	room.scene = textifyScene(room.scene, room.directions);
-	return room; // TODO clone
-}
 
+let lastPlayerLocation;
 export const room = derived([dungeon, playerLocation, roomBlockUpdate], ([$dungeon, $playerLocation, $roomBlockUpdate], set) => {
-	if ($playerLocation && $dungeon && !$dungeon.error) {
+	if ($playerLocation && $dungeon && !$dungeon.error && lastPlayerLocation != $playerLocation) { // TODO Change on room change (deal with it with popups)
+		lastPlayerLocation = $playerLocation;
 		const room = $dungeon.rooms[$playerLocation];
-		const $directions = $dungeon.allExitsFor(room);
+		const directions = $dungeon.allExitsFor(room);
 		let roomDesc;
 		if (room.location == '0') {
 			roomDesc = hallDesc;
+			roomDesc.directions = directions;
 		} else {
-			roomDesc = generateRoom('1', room.location, room.hash); // '1' is dungeon hash
+			roomDesc = generateRoom('1', room.location, room.hash, directions); // '1' is dungeon hash
 		}
-		roomDesc.directions = $directions;
-		set(textify(roomDesc));
+		set(roomDesc);
 	}
 })

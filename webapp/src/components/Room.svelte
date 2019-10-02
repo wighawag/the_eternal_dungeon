@@ -3,7 +3,7 @@ export let room;
 
 import TypeWriterText from './TypeWriterText.svelte';
 import { typewriter } from '../transitions';
-import { room_to_room } from '../db'
+import room_to_room from '../data/room_to_room'
 import log from '../utils/log'
 
 let moving = false;
@@ -176,7 +176,7 @@ tr {
 
             <td>
             <div class="center">
-                {#if room && currentScene == rootScene && !moving && moving_texts == null && room_described}
+                {#if room && currentScene.id == rootScene.id && !moving && moving_texts == null && room_described}
                 <button disabled={moving || !room.directions.north} on:click="{() => move(0)}" >North</button> 
                 {/if}
             </div>
@@ -195,7 +195,7 @@ tr {
             <td><div></div></td>
             <td>
             <div class="center">
-                {#if room && currentScene == rootScene && !moving && moving_texts == null && room_described}
+                {#if room && currentScene.id == rootScene.id && !moving && moving_texts == null && room_described}
                 <button disabled={moving || !room.directions.west} on:click="{() => move(3)}" >West</button>
                 {/if}
             </div>
@@ -203,7 +203,7 @@ tr {
             <td><div></div></td> 
             <td>
             <div class="center">
-                {#if room && currentScene == rootScene && !moving && moving_texts == null && room_described}
+                {#if room && currentScene.id == rootScene.id && !moving && moving_texts == null && room_described}
                 <button disabled={moving || !room.directions.east} on:click="{() => move(1)}" >East</button>
                 {/if}
             </div>
@@ -222,7 +222,7 @@ tr {
             <td><div></div></td>
             <td>
             <div class="center">
-                {#if room && currentScene == rootScene && !moving && moving_texts == null && room_described}
+                {#if room && currentScene.id == rootScene.id && !moving && moving_texts == null && room_described}
                 <button disabled={moving || !room.directions.south} on:click="{() => move(2)}" >South</button>
                 {/if}
             </div>
@@ -237,7 +237,7 @@ tr {
                     {/if}
                 {/if}
 
-                {#if !moving && room_described && currentScene != rootScene}
+                {#if !moving && room_described && currentScene.id != rootScene.id}
                     <button on:click="{() => backScene()}" >back</button>
                 {/if}
                 
