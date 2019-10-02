@@ -93,6 +93,8 @@ function textify(spec) {
         scene.description.push('There is ' + feature.type);
     }
 
+    // TODO entryDescription
+
     for (const chest of spec.chests) {
         scene.scenes.push({
             name: 'Open Chest', //TODO
