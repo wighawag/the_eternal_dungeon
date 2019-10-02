@@ -3,56 +3,7 @@ import Dungeon from '../lib/dungeon';
 import BN from 'bn.js';
 import wallet from './wallet';
 import hallDesc from '../data/hall.json';
-
-const rooms = [
-	{
-		scene: {
-			name: 'A random room',
-			description: [
-				'As you reach into the next room, you smells something horrible, like some rotten eggs. Then you realize why, the walls seems to covered by some sort of fungi. Nothing else seems to be present here.',
-			],
-			scenes: [
-				{
-					name: 'look at fungi',
-					description: ['The smells is very strong but you indeed confirm that this some sort of life form'],
-				},
-			],
-		},
-	},
-	{
-		scene: {
-			name: 'The lair',
-			description: [
-				'The next room is filled with smoke',
-				'Inside, you quickly noticed some being sitting in the middle. He looks at you in a way that makes you feel umcomfortable',
-			],
-			scenes: [
-				{
-					name: 'attack',
-					description: ['<moving_text>'],
-					actionIndex: 1,
-				},
-			],
-		},
-	},
-	{
-		scene: {
-			name: 'Another room',
-			description: [
-				'The next room is filled with smoke',
-				'Inside, you quickly noticed some being sitting in the middle. He looks at you in a way that makes you feel umcomfortable',
-			],
-			scenes: [
-				{
-					name: 'attack',
-					description: ['<moving_text>'],
-					actionIndex: 1,
-				},
-			],
-		},
-	},
-]
-
+import { generateRoom } from '../data/room_generation';
 // dec2hex :: Integer -> String
 // i.e. 0-255 -> '00'-'ff'
 function dec2hex(dec) {
@@ -199,7 +150,7 @@ export const room = derived([dungeon, playerLocation, roomBlockUpdate], ([$dunge
 		if (room.location == '0') {
 			roomDesc = hallDesc;
 		} else {
-			roomDesc = rooms[$dungeon.getRandomValue(room.location, room.hash, 99, rooms.length)];
+			roomDesc = generateRoom('1', room.location, room.hash); // '1' is dungeon hash
 		}
 		roomDesc.directions = $directions;
 		set(textify(roomDesc));

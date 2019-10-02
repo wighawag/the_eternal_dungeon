@@ -1,4 +1,4 @@
-{
+export default {
     "sizes": {
         "list": [
             {
