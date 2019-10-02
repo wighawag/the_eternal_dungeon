@@ -29,7 +29,7 @@ import('contractsInfo').then((contractsInfo) => {
 
     wallet.load({
         fallbackUrl,
-        localKey: privateKey || Boolean(hashParams.claimKey),
+        localKey: privateKey || Boolean(hashParams.claimKey), // TODO require user interaction to create a local Key (when claimKey available)
         supportedChainIds,
         disableBuiltInWallet: window.params.disableBuiltInWallet,
         registerContracts: async ($wallet, chainId) => {

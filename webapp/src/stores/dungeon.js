@@ -2,47 +2,7 @@ import { writable, readable, derived } from 'svelte/store';
 import Dungeon from '../lib/dungeon';
 import BN from 'bn.js';
 import wallet from './wallet';
-
-const hallDesc = {
-	scene: {
-		name: 'The hall',
-		entryDescriptions: {
-			'entrance' : [
-				'As you enter the dungeon, the door slam behind you. Fear establish itself but you have to go over it',
-				'The room you entered is quite big with an impressive cross arch on the ceiling. The walls are all white. In the middle stand a statue and in the corner, you can notice a sort of box.',	
-			],
-		} ,
-		description: [
-			'The room is quite big with an impressive cross arch on the ceiling. The walls are all white. In the middle stand a statue and in the corner, you can notice a sort of box.',
-		],
-		scenes: [
-			{
-				name: 'look box',
-				description: ['The box is made of rock, there is what some sort of pressing mechanism'],
-				scenes: [
-					{
-						name: 'press mechanism',
-						description: [
-							'As you press the mechanism, you feel underneath like something is moving',
-							'The box is opening...'
-						],
-						actionIndex: 0, // transition text is description ?
-					},
-				],
-			},
-			{
-				name: 'look statue',
-				description: ['The status is magnificient. it depicts a woman carrying in her a slate that she seems to read as one of her fingers touch it'],
-				scenes: [
-					{
-						name: 'touch',
-						description: ['it feels cold']
-					},
-				],
-			},
-		],
-	},
-};
+import hallDesc from '../data/hall.json';
 
 const rooms = [
 	{
