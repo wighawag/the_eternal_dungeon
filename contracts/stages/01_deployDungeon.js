@@ -6,7 +6,7 @@ const {
     waitReceipt
 } = require('../utils')(rocketh.ethereum);
 
-const config = require('../../config')(rocketh.chainId);
+const config = require('../../webapp/src/config')(rocketh.chainId); // TODO contract expose min balance / price
 
 const gas = 6000000;
 module.exports = async ({namedAccounts, isDeploymentChainId}) => {

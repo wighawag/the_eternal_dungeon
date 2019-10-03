@@ -14,7 +14,7 @@ module.exports = {
         },
     },
     ganacheOptions: {
-        gasPrice: "1000000000",
+        gasPrice: "1000000000", // TODO config per network emulation
         blockTime: 6 // TODO only for manual testing 
     },
     namedAccounts: {

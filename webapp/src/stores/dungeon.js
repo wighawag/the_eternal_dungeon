@@ -4,6 +4,7 @@ import BN from 'bn.js';
 import wallet from './wallet';
 import hallDesc from '../data/hall.json';
 import { generateRoom } from '../data/room_generation';
+import config from '../config';
 // dec2hex :: Integer -> String
 // i.e. 0-255 -> '00'-'ff'
 function dec2hex(dec) {
@@ -72,7 +73,7 @@ async function loadDungeon($wallet) {
 		{
 			logLevel: 'trace',
 			blockInterval: 12,
-			price: '1000000000000000000' //1 // TODO config.price[$wallet.chainId],
+			price: config($wallet.chainId).price,
 		}
 	);
 	await dungeon.init(player, key);  // TODO on accounts changed, need to reset // easiest solution : reload page on account change

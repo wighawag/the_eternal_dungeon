@@ -400,17 +400,27 @@ Dungeon.prototype.move = async function(direction) {
     } catch(e) {
         console.error(e);
     }
+    // console.log('gasEstimate', gasEstimate);
     if (!gasEstimate) {
         gasEstimate = ethers.BigNumber.from(4000000);
     }
+    const gasLimit = gasEstimate.add(15000);
+
+    const balance = await this.provider.getBalance(this.delegateWallet.address);
+    const gasPrice = (await this.provider.getGasPrice()).mul(100);
+    const fee = gasPrice.mul(gasLimit);
     
-    const overrides = {gasLimit: gasEstimate.add(15000)};
+    if(fee.gt(balance)) {
+        throw new Error('not enough balance');
+    }
+
+    const overrides = {gasLimit, gasPrice};
     // console.log({overrides});
     return this.contract.functions.move(this.player, direction, overrides);
 }
 
 Dungeon.prototype.join = async function() {
-    let gasEstimate = ethers.BigNumber.from(4000000).toHexString();
+    let gasEstimate = ethers.BigNumber.from(200000).toHexString();
     // TODO await estimate({from: this.player, gas: 4000000, value: this.price}, this.contract, 'join', this.delegateWallet.address);
     let value = ethers.BigNumber.from(this.price).toHexString();
     return this.wallet.tx({gas: gasEstimate, value}, 'Dungeon', 'join', this.delegateWallet.address);

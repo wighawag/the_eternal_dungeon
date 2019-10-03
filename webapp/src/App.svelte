@@ -27,6 +27,7 @@
 						<GameScreen/>
 					{:else}
 						<RefillScreen/>
+						<p>{$playerEnergy} left</p>
 					{/if}
 				{/if}
 			{:else}
