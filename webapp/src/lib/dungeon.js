@@ -407,7 +407,7 @@ Dungeon.prototype.move = async function(direction) {
     const gasLimit = gasEstimate.add(15000);
 
     const balance = await this.provider.getBalance(this.delegateWallet.address);
-    const gasPrice = (await this.provider.getGasPrice()).mul(100);
+    const gasPrice = await this.provider.getGasPrice();
     const fee = gasPrice.mul(gasLimit);
     
     if(fee.gt(balance)) {
