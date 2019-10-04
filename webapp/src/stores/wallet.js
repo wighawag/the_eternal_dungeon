@@ -9,10 +9,12 @@ let dev = process.env.NODE_ENV === 'development';
 import('contractsInfo').then((contractsInfo) => {
     let supportedChainIds = Object.keys(contractsInfo);
     let fallbackUrl;
-    if (dev) {
+    if (location.host == 'localhost' || location.host == '127.0.0.1') {
         fallbackUrl = 'http://localhost:8545';
     } else if (contractsInfo['1']) {
         fallbackUrl = 'https://mainnet.infura.io/v3/c985560c1dc04aed8f2c0300aa5f5efa';
+    } else if(contractsInfo['77']) {
+       fallbackUrl = 'https://sokol.poa.network';
     } else if (contractsInfo['4']) {
         fallbackUrl = 'https://rinkeby.infura.io/v3/c985560c1dc04aed8f2c0300aa5f5efa';
     } else {
@@ -34,20 +36,11 @@ import('contractsInfo').then((contractsInfo) => {
         supportedChainIds,
         disableBuiltInWallet: window.params.disableBuiltInWallet,
         registerContracts: async ($wallet, chainId) => {
-            if ($wallet) {
-                chainId = chainId || $wallet.chainId;
-                if (contractsInfo[chainId]) {
-                    return contractsInfo[chainId];
-                } else {
-                    console.error('no contract for chainId ' + chainId);
-                }
-            } else {
-                if (process.browser) {
-                    // TODO ?
-                    console.error('could not compute $wallet.chainId');
-                }
+            chainId = chainId || $wallet.chainId;
+            if (contractsInfo[chainId]) {
+                return contractsInfo[chainId];
             }
-            return {};
+            throw new Error('no contract for chainId ' + chainId);
         }
     });
 });
