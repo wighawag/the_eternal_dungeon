@@ -17,9 +17,14 @@
 {:else if $wallet.status == 'NoWallet'}
     
     <div style="text-align:center">
-        <h3> You need a wallet darling! </h3>
+        <h3> You'll need a QR code</h3>
+        <!-- <h3> You don't have a wallet. </h3> -->
+        <!-- <button on:click="{() => wallet.createLocalWallet()}">Create local Wallet</button> -->
     </div>
-    
+{:else if $wallet.status == 'CreatingLocalWallet'}
+    <div style="text-align:center">
+        <h3>Creating Local Wallet</h3>
+    </div>
 {:else if $wallet.status == 'Opera_FailedChainId'}
     
     <div style="text-align:center">

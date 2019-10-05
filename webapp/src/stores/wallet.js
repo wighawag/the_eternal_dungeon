@@ -9,7 +9,8 @@ let dev = process.env.NODE_ENV === 'development';
 import('contractsInfo').then((contractsInfo) => {
     let supportedChainIds = Object.keys(contractsInfo);
     let fallbackUrl;
-    if (location.host == 'localhost' || location.host == '127.0.0.1') {
+    console.log('host', location.host);
+    if (location.host.startsWith('localhost') || location.host.startsWith('127.0.0.1')) {
         fallbackUrl = 'http://localhost:8545';
     } else if (contractsInfo['1']) {
         fallbackUrl = 'https://mainnet.infura.io/v3/c985560c1dc04aed8f2c0300aa5f5efa';
@@ -34,7 +35,7 @@ import('contractsInfo').then((contractsInfo) => {
         fallbackUrl,
         localKey: privateKey || Boolean(hashParams.claimKey), // TODO require user interaction to create a local Key (when claimKey available)
         supportedChainIds,
-        disableBuiltInWallet: window.params.disableBuiltInWallet,
+        disableBuiltInWallet: typeof window.params.disableBuiltInWallet !== 'undefined'? window.params.disableBuiltInWallet !== 'false' : true,
         registerContracts: async ($wallet, chainId) => {
             chainId = chainId || $wallet.chainId;
             if (contractsInfo[chainId]) {
