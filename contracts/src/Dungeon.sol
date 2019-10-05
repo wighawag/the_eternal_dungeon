@@ -22,6 +22,7 @@ contract Dungeon {
         uint32 numExits;
         uint8 exits;
         uint8 kind;
+        uint256 chest; // TODO optimize
     }
 
     struct Stats {
@@ -132,7 +133,8 @@ contract Dungeon {
             numRooms: 0,
             numExits: 0,
             exits:0,
-            kind:0
+            kind:0,
+            chest: 0
         });
         require(blockHash == actualiseBlock(blockNumber), "blockHash do not match");
         actualiseRoom(0);
@@ -202,6 +204,28 @@ contract Dungeon {
             exits = 2**chosenExits;
         }
         return (exits, uint8(numExits));
+    }
+
+    mapping(uint256 => address) _owners; // TODO external token contract
+    function ownerOf(uint256 id) external returns(address tokenOwner) {
+        tokenOwner = _owners[id];
+        require(tokenOwner != address(0), "token does not exist");
+    }
+    function _mint(uint256 itemHash, address to) internal {
+        require(_owners[itemHash] == address(0), "already claimed");
+        _owners[itemHash] = to; // TODO erc721
+    }
+    function claimChest(address sender, uint256 location) external withCorrectSender(sender) {
+        actualiseBlock(stats.blockToActualise);
+        Player storage player = players[sender];
+        require(player.location == location, "not in that room"); // TODO use hash and requir eplayer to provide data, instead of spending more gas by saving playerAddress
+        actualiseRoom(location);
+        bytes32 blockHash = blockHashes[rooms[location].blockNumber];
+        bool hasChest = uint256(keccak256(abi.encodePacked(location, blockHash, uint8(4)))) % 3 == 0; // TODO depends on type, etc..., depth
+        if(hasChest) {
+            _mint(uint256(keccak256(abi.encodePacked(location, blockHash, uint8(5)))), sender); // TODO depends
+            // uint256 defines attributes, name coule be base don roomHash
+        }
     }
 
     function actualiseRoom(uint256 location) public {
