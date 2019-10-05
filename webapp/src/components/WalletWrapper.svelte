@@ -58,6 +58,12 @@
                 <button on:click="{() => wallet.reloadPage()}">Reload</button>
             {/if}
         </div>
+    {:else if typeof $wallet.initialBalance !== 'undefined' && $wallet.initialBalance == 0}
+        <div style="text-align:center">
+            <h3> You have zero balance</h3>
+            <!-- <h3> You don't have a wallet. </h3> -->
+            <!-- <button on:click="{() => wallet.createLocalWallet()}">Create local Wallet</button> -->
+        </div>
     {:else}
         {#if $wallet.requestingTx}
         <div style="text-align:center">

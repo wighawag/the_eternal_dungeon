@@ -62,10 +62,10 @@ class RNG {
         }
         return features;
     }
-    randomChests(blockchainData) {
-        return [];
+    randomChests(chestData) {
+        return [this.randomItem(properties.chests.list)]; // TODO add chestData for item given
     }
-    randomMonsters(blockchainData){
+    randomMonsters(monstersData){
         return [];
     }
 
@@ -144,7 +144,10 @@ function textify(spec) {
     return roomDesc;
 }
 
-export function generateRoom(dungeonHash, roomLocation, roomHash, directions, blockchainData) {
+export function generateRoom(room, directions) {
+    const roomLocation =  room.location;
+    const roomHash = room.hash;
+    const dungeonHash = '1'; // TODO
     const rng = new RNG(dungeonHash, roomLocation, roomHash);
     const spec = {
         name: rng.randomName(),
@@ -155,8 +158,8 @@ export function generateRoom(dungeonHash, roomLocation, roomHash, directions, bl
         ceiling: rng.randomCeiling(),
         floor: rng.randomFloor(),
         features : rng.randomFeatures(),
-        chests : rng.randomChests(blockchainData),
-        monsters : rng.randomMonsters(blockchainData),
+        chests : room.hasChest ? rng.randomChests(room.chest) : [],
+        monsters : room.hasMonsters ?rng.randomMonsters(room.monsters): [],
         directions
     }
     console.log({spec});

@@ -531,6 +531,12 @@ Dungeon.prototype.computeRoom = async function(location, hash, blockNumber, numR
     } = this.generateExits(location, hash, numRoomsAtDiscovery, numExitsAtDiscovery);
     
     const kind = this.getRandomValue(location, hash, 3, 2).add(new BN(1)).toNumber();
+
+    const hasChest = this.getRandomValue(location, hash, 4, 3).toNumber() == 0;
+    let chest;
+    if (hasChest) {
+        chest = this.getRandomValue(location, hash, 5);
+    }
     
     return {
         status,
@@ -543,6 +549,8 @@ Dungeon.prototype.computeRoom = async function(location, hash, blockNumber, numR
         kind,
         numRoomsAtDiscovery,
         numExitsAtDiscovery,
+        hasChest,
+        chest
     };
 }
 
@@ -552,7 +560,11 @@ Dungeon.prototype.getRandomValue = function(location, hash, index, mod) {
         {type: 'bytes32', value: hash},
         {type: 'uint8', value: index},
     );
-    return new BN(random.slice(2), 'hex').mod(new BN(mod));
+    const bn = new BN(random.slice(2), 'hex');
+    if (mod) {
+        return bn.mod(new BN(mod))
+    }
+    return bn;
 }
 
 

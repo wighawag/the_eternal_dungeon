@@ -1,7 +1,8 @@
 <script>
 import Room from './Room.svelte';
-import { dungeon } from '../stores/dungeon.js';
+import { dungeon } from '../stores/dungeon';
 import rooms from '../data/pre-dungeon.json';
+import wallet from '../stores/wallet';
 
 // associate ids
 const roomIds = Object.keys(rooms);
@@ -11,10 +12,10 @@ for (const roomId of roomIds) {
 
 let player = $dungeon.player;
 
-let room = rooms[localStorage.getItem(player + '_preDungeon') || 'first'];
+let room = rooms[localStorage.getItem(player + '_' + $wallet.chainId + '_preDungeon') || 'first'];
 
 $: if(player) { 
-    localStorage.setItem(player + '_preDungeon', room.id);
+    localStorage.setItem(player + '_' + $wallet.chainId + '_preDungeon', room.id);
 }
 
 $: roomObj = {

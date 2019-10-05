@@ -51,7 +51,7 @@ const store = (() => {
                 const provider = wallet.getProvider();
                 lastWalletAddress = $wallet.address;
                 let claimingTxHash;
-                let localStorageKeyForClaimTxHash = $wallet.address + '_claimTxHash';
+                let localStorageKeyForClaimTxHash = $wallet.address + '_' + $wallet.chainId + '_claimTxHash';
                 try {
                     claimingTxHash = localStorage.getItem(localStorageKeyForClaimTxHash);
                 } catch(e) {

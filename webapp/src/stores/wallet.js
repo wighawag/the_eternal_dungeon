@@ -36,6 +36,7 @@ import('contractsInfo').then((contractsInfo) => {
         localKey: privateKey || Boolean(hashParams.claimKey), // TODO require user interaction to create a local Key (when claimKey available)
         supportedChainIds,
         disableBuiltInWallet: typeof window.params.disableBuiltInWallet !== 'undefined'? window.params.disableBuiltInWallet !== 'false' : true,
+        // fetchInitialBalance: true,
         registerContracts: async ($wallet, chainId) => {
             chainId = chainId || $wallet.chainId;
             if (contractsInfo[chainId]) {

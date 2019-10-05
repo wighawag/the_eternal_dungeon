@@ -25,7 +25,7 @@
     "dotenv-webpack": "^1.7.0",
     "ethers": "^5.0.0-beta.157",
     "sentencer": "^0.2.0",
-    "svelte-wallet": "^0.0.3",
+    "svelte-wallet": "^0.0.4",
     "web3-utils": "^1.2.1"
   }
 }

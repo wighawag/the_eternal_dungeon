@@ -128,7 +128,7 @@ export const room = derived([dungeon, playerLocation, roomBlockUpdate], ([$dunge
 			roomDesc = hallDesc;
 			roomDesc.directions = directions;
 		} else {
-			roomDesc = generateRoom('1', room.location, room.hash, directions); // '1' is dungeon hash
+			roomDesc = generateRoom(room, directions); // '1' is dungeon hash
 		}
 		set(roomDesc);
 	}
