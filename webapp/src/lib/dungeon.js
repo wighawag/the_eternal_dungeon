@@ -191,12 +191,14 @@ Dungeon.prototype.allExitsFor = function(roomOrLocation) {
     } else {
         room = roomOrLocation;
     }
-    return {
+    const allExists = {
         north: room.exits.north || this.opositeExit(room.location, 0),
         east: room.exits.east || this.opositeExit(room.location, 1),
         south: room.exits.south || this.opositeExit(room.location, 2),
         west: room.exits.west || this.opositeExit(room.location, 3),
     }
+    console.log({roomExits: room.exits, allExists});
+    return allExists;
 }
 
 Dungeon.prototype._findFirstExit = function(roomOrLocation, start) {
@@ -402,7 +404,7 @@ Dungeon.prototype.move = async function(direction) {
     }
     // console.log('gasEstimate', gasEstimate);
     if (!gasEstimate) {
-        gasEstimate = ethers.BigNumber.from(4000000);
+        gasEstimate = ethers.BigNumber.from(400000);
     }
     const gasLimit = gasEstimate.add(15000);
 
@@ -417,6 +419,32 @@ Dungeon.prototype.move = async function(direction) {
     const overrides = {gasLimit, gasPrice};
     // console.log({overrides});
     return this.contract.functions.move(this.player, direction, overrides);
+}
+
+Dungeon.prototype.claimChest = async function(location) {
+    let gasEstimate;
+    try {
+        gasEstimate = await this.contract.estimate.claimChest(this.player, location)
+    } catch(e) {
+        console.error(e);
+    }
+    // console.log('gasEstimate', gasEstimate);
+    if (!gasEstimate) {
+        gasEstimate = ethers.BigNumber.from(400000);
+    }
+    const gasLimit = gasEstimate.add(15000);
+
+    const balance = await this.provider.getBalance(this.delegateWallet.address);
+    const gasPrice = await this.provider.getGasPrice();
+    const fee = gasPrice.mul(gasLimit);
+    
+    if(fee.gt(balance)) {
+        throw new Error('not enough balance');
+    }
+
+    const overrides = {gasLimit, gasPrice};
+    // console.log({overrides});
+    return this.contract.functions.claimChest(this.player, location, overrides);
 }
 
 Dungeon.prototype.join = async function() {
@@ -532,10 +560,19 @@ Dungeon.prototype.computeRoom = async function(location, hash, blockNumber, numR
     
     const kind = this.getRandomValue(location, hash, 3, 2).add(new BN(1)).toNumber();
 
-    const hasChest = this.getRandomValue(location, hash, 4, 3).toNumber() == 0;
+    let hasChest = this.getRandomValue(location, hash, 4, 3).toNumber() == 0;
     let chest;
     if (hasChest) {
-        chest = this.getRandomValue(location, hash, 5);
+        chest = '0x' + this.getRandomValue(location, hash, 5).toString(16);
+        let owner;
+        try{
+            owner = await this.wallet.call({blockTag: blockNumber}, 'Dungeon', 'ownerOf', chest);
+            if (owner && owner != '') {
+                hasChest = false;
+            }
+        } catch(e) {
+            // console.log(e);
+        }
     }
     
     return {

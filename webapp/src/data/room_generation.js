@@ -97,6 +97,7 @@ function textify(spec) {
 
     for (const chest of spec.chests) {
         scene.scenes.push({
+            type: 'chest',
             name: 'Open Chest', //TODO
             description: ['You open the chest'],
             actionIndex: actionCounter++
@@ -138,7 +139,8 @@ function textify(spec) {
     }
     const roomDesc = {
         scene,
-        directions: spec.directions
+        directions: spec.directions,
+        location: spec.location,
     }
     console.log({roomDesc});
     return roomDesc;
@@ -160,7 +162,8 @@ export function generateRoom(room, directions) {
         features : rng.randomFeatures(),
         chests : room.hasChest ? rng.randomChests(room.chest) : [],
         monsters : room.hasMonsters ?rng.randomMonsters(room.monsters): [],
-        directions
+        directions,
+        location: roomLocation,
     }
     console.log({spec});
     const roomDesc = textify(spec);

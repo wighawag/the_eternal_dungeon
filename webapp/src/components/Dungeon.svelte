@@ -12,8 +12,14 @@ $: roomObj = {
         await $dungeon.once('block', (block) => block >= receipt.blockNumber);
         return receipt;
     },
-    act: async (choice) => {
-        const receipt = await choice.perform().then(utils.waitReceipt); // TODO try catch
+    act: async() => {
+
+    },
+    claimChest: async () => {
+        const receipt = await $dungeon.claimChest($room.location).then(utils.waitReceipt); // TODO try catch
+        if(receipt.status == '0x0') {
+            console.error('tx failed', receipt);
+        }
         await $dungeon.once('block', (block) => block >= receipt.blockNumber);
         return receipt;
     }

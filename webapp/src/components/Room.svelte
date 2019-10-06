@@ -56,7 +56,34 @@ async function move(direction) {
 
 let breadcrumb = [];
 async function readScene(scene) {
-    if(typeof scene.actionIndex != 'undefined') {
+    if(scene.type === 'chest') {
+        global.previousScene = currentScene;
+        moving = true;
+        room_described = false;
+        roomStage = 0;
+        text_while_acting(scene);
+        let receipt;
+        let failed = false;
+        try{
+            await room.claimChest();
+        } catch(e) {
+            log.trace('ERROR move', e);
+            failed = true;
+            roomStage = 999;
+            room_described = true;
+            moving_texts = null;
+        }
+        if(failed) {
+            roomStage = 999;
+            room_described = true;
+        } else {
+            log.trace('done', receipt);
+            breadcrumb.push(currentScene);
+            currentScene = {description:["you get the item"]};//room.scene;
+            // TODO currentScene.description.unshift('You reach into the next room');
+        }
+        moving = false;
+    } else if(typeof scene.actionIndex != 'undefined') {
         global.previousScene = currentScene;
         moving = true;
         room_described = false;
