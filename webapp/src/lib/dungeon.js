@@ -250,29 +250,38 @@ Dungeon.prototype._startListening = async function() {
             let inDungeonChanged = false;
             let energyChanged = false;
             let delegatedChanged = false;
+            let newCurrentRoom = null;
             const roomsAdded = [];
             const roomsRemoved = [];
             if(latestBlock > this.lastBlock) {
                 log.trace('new blocks');
                 const newState = {};
                 newState.playerLocation = this.playerLocation;
-                newState.rooms = {};
-                for(let roomLocation of Object.keys(this.rooms)) {
-                    newState.rooms[roomLocation] = this.rooms[roomLocation];
-                }
-
+                newState.currentRoomChangeBlockNumber = this.currentRoomChangeBlockNumber;
+                
                 const playerData = await this.fetchPlayer(latestBlock);
-                console.log('PLAYERDAT', playerData);
-                if(playerData.location != this.playerLocation) {
-                    newState.playerLocation = playerData.location;
+                // log.trace('PLAYERDAT', playerData);
+                if(playerData.location.toString() != this.playerLocation) {
+                    newState.rooms = {};
+                    for(let roomLocation of Object.keys(this.rooms)) {
+                        newState.rooms[roomLocation] = this.rooms[roomLocation];
+                    }
+                    newState.playerLocation = playerData.location.toString();
                     log.info('PlayerMoved', newState.playerLocation);
                     newPlayerLocation = true;
                     await this._fetchRoomsAround(newState.playerLocation, newState.rooms, latestBlock);
+                    newState.currentRoomChangeBlockNumber 
+                } else {
+                    newCurrentRoom = await this.fetchRoom(this.playerLocation);
+                    if(newCurrentRoom.changeBlockNumber != this.currentRoomChangeBlockNumber) {
+                        newState.currentRoomChangeBlockNumber = newCurrentRoom.changeBlockNumber;
+                        log.info('Current RoomChanged', newState.currentRoomChangeBlockNumber);
+                    }
                 }
 
-                if(playerData.energy != this.energy) {
+                if(playerData.energy.toString() != this.energy) {
                     energyChanged = true;
-                    newState.energy = playerData.energy;
+                    newState.energy = playerData.energy.toString();
                 }
 
                 if(playerData.inDungeon != this.inDungeon) {
@@ -284,53 +293,61 @@ Dungeon.prototype._startListening = async function() {
                 if(newState.isCurrentDelegate != this.isCurrentDelegate) {
                     delegatedChanged = true;
                 }
-            
-                for(let roomLocation of Object.keys(newState.rooms)) {
-                    const room = newState.rooms[roomLocation];
-                    if(room.status == 'listening') {
-                        const fetchedRoom = await this.fetchRoom(roomLocation, latestBlock)
-                        if(fetchedRoom) {
-                            newState.rooms[roomLocation] = fetchedRoom;
+
+                if(newPlayerLocation) {
+                    for(let roomLocation of Object.keys(newState.rooms)) {
+                        const room = newState.rooms[roomLocation];
+                        if(room.status == 'listening') {
+                            const fetchedRoom = await this.fetchRoom(roomLocation, latestBlock)
+                            if(fetchedRoom) {
+                                newState.rooms[roomLocation] = fetchedRoom;
+                            }
                         }
                     }
+                    const clonedRooms = {};
+                    for(let roomLocation of Object.keys(this.rooms)) {
+                        clonedRooms[roomLocation] = this.rooms[roomLocation];
+                    }
+                    for(let roomLocation of Object.keys(newState.rooms)) {
+                        const currentRoom = this.rooms[roomLocation];
+                        const newRoom = newState.rooms[roomLocation];
+                        if(currentRoom) {
+                            if(currentRoom.status == 'listening' && newRoom.status != 'listening') {
+                                log.info('new room from listen', roomLocation);
+                                roomsAdded.push(newRoom);
+                            }
+                        } else {
+                            if(newRoom.status != 'listening') {
+                                log.info('new room', roomLocation);
+                                roomsAdded.push(newRoom);
+                            } else {
+                                log.info('new listen', roomLocation);
+                                roomsAdded.push(newRoom);
+                            }
+                        }
+                        delete clonedRooms[roomLocation];
+                    }
+                    for(let roomLocation of Object.keys(clonedRooms)) {
+                        const room = clonedRooms[roomLocation];
+                        if(room.status != 'listening') {
+                            log.info('room removed', roomLocation);
+                            roomsRemoved.push(room);
+                        } else {
+                            log.info('listen removed', roomLocation);
+                            roomsRemoved.push(room);
+                        }
+                    }
+                    this.playerLocation = newState.playerLocation;
+                    this.rooms = newState.rooms;
                 }
 
-                const clonedRooms = {};
-                for(let roomLocation of Object.keys(this.rooms)) {
-                    clonedRooms[roomLocation] = this.rooms[roomLocation];
+                if (newCurrentRoom) {
+                    this.rooms[this.playerLocation] = newCurrentRoom;
                 }
-                for(let roomLocation of Object.keys(newState.rooms)) {
-                    const currentRoom = this.rooms[roomLocation];
-                    const newRoom = newState.rooms[roomLocation];
-                    if(currentRoom) {
-                        if(currentRoom.status == 'listening' && newRoom.status != 'listening') {
-                            log.info('new room from listen', roomLocation);
-                            roomsAdded.push(newRoom);
-                        }
-                    } else {
-                        if(newRoom.status != 'listening') {
-                            log.info('new room', roomLocation);
-                            roomsAdded.push(newRoom);
-                        } else {
-                            log.info('new listen', roomLocation);
-                            roomsAdded.push(newRoom);
-                        }
-                    }
-                    delete clonedRooms[roomLocation];
-                }
-                for(let roomLocation of Object.keys(clonedRooms)) {
-                    const room = clonedRooms[roomLocation];
-                    if(room.status != 'listening') {
-                        log.info('room removed', roomLocation);
-                        roomsRemoved.push(room);
-                    } else {
-                        log.info('listen removed', roomLocation);
-                        roomsRemoved.push(room);
-                    }
-                }
+
+                this.currentRoomChangeBlockNumber = newState.currentRoomChangeBlockNumber;
+                
                 this.lastBlock = latestBlock;
-                this.playerLocation = newState.playerLocation;
-                this.rooms = newState.rooms;
                 this.energy = newState.energy;
                 this.inDungeon = newState.inDungeon;
                 this.isCurrentDelegate = newState.isCurrentDelegate;
@@ -341,6 +358,10 @@ Dungeon.prototype._startListening = async function() {
                 }
                 for(let room of roomsAdded) {
                     this._emit('roomAdded', room);
+                }
+                
+                if(newCurrentRoom) {
+                    this._emit('currentRoomChanged', this.currentRoomChangeBlockNumber);
                 }
 
                 if(newPlayerLocation) {
@@ -479,7 +500,7 @@ Dungeon.prototype.fetchRoom = async function(location, blockNumber) {
         roomBlockHash = block.hash;
     }
     
-    return this.computeRoom(location, roomBlockHash, roomData.blockNumber, roomData.numRooms, roomData.numExits, status);
+    return this.computeRoom(location, roomBlockHash, roomData.blockNumber, roomData.numRooms, roomData.numExits, roomData.changeBlockNumber.toHexString(), status);
 }
 
 Dungeon.prototype.generateExits = function(location, hash, numRoomsAtDiscovery, numExitsAtDiscovery) {
@@ -553,7 +574,7 @@ Dungeon.prototype.generateExits = function(location, hash, numRoomsAtDiscovery, 
     }
 }
 
-Dungeon.prototype.computeRoom = async function(location, hash, blockNumber, numRoomsAtDiscovery, numExitsAtDiscovery, status) {
+Dungeon.prototype.computeRoom = async function(location, hash, blockNumber, numRoomsAtDiscovery, numExitsAtDiscovery, changeBlockNumber, status) {
     
     let {
         numExits,
@@ -590,7 +611,8 @@ Dungeon.prototype.computeRoom = async function(location, hash, blockNumber, numR
         numRoomsAtDiscovery,
         numExitsAtDiscovery,
         hasChest,
-        chest
+        chest,
+        changeBlockNumber
     };
 }
 

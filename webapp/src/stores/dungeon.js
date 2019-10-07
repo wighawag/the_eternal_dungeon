@@ -111,17 +111,24 @@ export const playerInDungeon = derived(dungeon, ($dungeon, set) => {
 	}
 }, null);
 
-export const roomBlockUpdate = derived(dungeon, ($dungeon, set) => {
-	$dungeon.on('roomChanged', (block) => { set(block) }); // TODO roomChanged for new exits (from neighbor rooms)
+// export const roomBlockUpdate = derived(dungeon, ($dungeon, set) => {
+// 	$dungeon.on('roomChanged', (block) => { set(block) }); // TODO roomChanged for new exits (from neighbor rooms)
+// })
+
+export const currentRoomChanged = derived(dungeon, ($dungeon, set) => {
+	$dungeon.on('currentRoomChanged', (block) => {
+		set(block);
+	}); // TODO roomChanged for new exits (from neighbor rooms)
 })
 
 
-
 let lastPlayerLocation;
-export const room = derived([dungeon, playerLocation, roomBlockUpdate], ([$dungeon, $playerLocation, $roomBlockUpdate], set) => {
-	if ($playerLocation && $dungeon && !$dungeon.error && lastPlayerLocation != $playerLocation) { // TODO Change on room change (deal with it with popups)
-		lastPlayerLocation = $playerLocation;
+let lastChangeBlockNumber;
+export const room = derived([dungeon, playerLocation, currentRoomChanged], ([$dungeon, $playerLocation, $currentRoomChanged], set) => {
+	if ($playerLocation && $dungeon && !$dungeon.error && ($currentRoomChanged != lastChangeBlockNumber || lastPlayerLocation != $playerLocation)) { // TODO Change on room change (deal with it with popups)
 		const room = $dungeon.rooms[$playerLocation];
+		lastPlayerLocation = $playerLocation;
+		lastChangeBlockNumber = room.changeBlockNumber;
 		const directions = $dungeon.allExitsFor(room);
 		let roomDesc;
 		if (room.location == '0') {
@@ -130,6 +137,18 @@ export const room = derived([dungeon, playerLocation, roomBlockUpdate], ([$dunge
 		} else {
 			roomDesc = generateRoom(room, directions); // '1' is dungeon hash
 		}
+		roomDesc.scene.id = 1;
+		let i = 2;
+		function traverseScene(rootScene) {
+			if(rootScene.scenes) {
+				for(const scene of rootScene.scenes) {
+					scene.id = i++
+					traverseScene(scene);
+				}
+			}
+		}
+		traverseScene(roomDesc.scene);
+
 		set(roomDesc);
 	}
 })

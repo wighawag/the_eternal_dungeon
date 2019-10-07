@@ -119,7 +119,24 @@ async function readScene(scene) {
 
 async function backScene(scene) {
     roomStage = 999;
-    currentScene = breadcrumb.pop()
+    const previousScene = breadcrumb.pop();
+    console.log({previousScene});
+    currentScene = traverseScene(rootScene, previousScene.id);
+}
+
+function traverseScene(rootScene, id) {
+    if (rootScene.id === id) {
+        return rootScene;
+    }
+    if(rootScene.scenes) {
+        for(const scene of rootScene.scenes) {    
+            const found = traverseScene(scene, id);
+            if(found) {
+                return found;
+            }
+        }
+    }
+    return null;
 }
 
 async function text_while_moving() {

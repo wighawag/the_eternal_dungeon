@@ -131,12 +131,6 @@ function textify(spec) {
         scene.description.push(exitsDescription);
     }
 
-    
-    scene.id = 0;
-    let i = 1;
-    for (const innerScene of scene.scenes) {
-        innerScene.id = i++;
-    }
     const roomDesc = {
         scene,
         directions: spec.directions,

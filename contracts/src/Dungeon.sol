@@ -27,6 +27,7 @@ contract Dungeon {
         uint8 exits;
         uint8 kind;
         uint256 chest; // TODO optimize
+        uint64 changeBlockNumber;
     }
 
     struct Stats {
@@ -142,7 +143,8 @@ contract Dungeon {
             numExits: 0,
             exits:0,
             kind:0,
-            chest: 0
+            chest: 0,
+            changeBlockNumber: blockNumber
         });
         require(blockHash == actualiseBlock(blockNumber), "blockHash do not match");
         actualiseRoom(0);
@@ -278,6 +280,7 @@ contract Dungeon {
             _mint(uint256(keccak256(abi.encodePacked(location, blockHash, uint8(5)))), sender); // TODO depends
             // uint256 defines attributes, name coule be base don roomHash
         }
+        rooms[location].changeBlockNumber = uint64(block.number); // TODO better / so client get notified of changes
     }
 
     function actualiseRoom(uint256 location) public {
@@ -404,7 +407,8 @@ contract Dungeon {
         uint64 monsterBlockNumber,
         uint64 attackBlockNumber,
         uint256 attackResult,
-        uint64 numPlayers
+        uint64 numPlayers,
+        uint64 changeBlockNumber
     ){
         Room storage room = rooms[location];
         exits = room.exits;
@@ -416,6 +420,7 @@ contract Dungeon {
         attackBlockNumber = room.attackBlockNumber;
         attackResult = room.attackResult;
         numPlayers = room.numPlayers;
+        changeBlockNumber= room.changeBlockNumber;
     }
 
     /////////////////////  DEBUG GETTERS //////////////// // TODO REMOVE
