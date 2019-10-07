@@ -18,6 +18,10 @@ contract Dungeon {
 */
     struct Room {
         uint64 blockNumber;
+        uint64 monsterBlockNumber;
+        uint64 attackBlockNumber;
+        uint256 attackResult;
+        uint64 numPlayers; //what about attack already in progress (for other players to see, what if they attempt at the same time, one fails and it need to know why)
         uint64 numRooms;
         uint32 numExits;
         uint8 exits;
@@ -36,7 +40,7 @@ contract Dungeon {
     event PlayerMoved(address indexed player, uint256 indexed oldLocation, uint256 indexed newLocation);
 
     mapping(address => Player) players;
-    struct Player {
+    struct Player { // TODO Character, player being another level, so plyaer can have multiple character in time and his energy can be shared?
         bool inDungeon;
         uint256 energy;
         uint256 location;
@@ -87,6 +91,7 @@ contract Dungeon {
     function join(address payable _newDelegate) external payable {
         require(!players[msg.sender].inDungeon, "already in dungeon");
         players[msg.sender].inDungeon = true; // TODO timestamp of entry ?
+        rooms[0].numPlayers++;
         
         require(_newDelegate != address(0), "need a delegate");
         _refill(msg.value - MIN_BALANCE);
@@ -129,6 +134,10 @@ contract Dungeon {
         emit RoomDiscovered(0, blockNumber, 0, 0);
         rooms[0] = Room({
             blockNumber: blockNumber,
+            monsterBlockNumber: 0,
+            attackBlockNumber: 0,
+            attackResult: 0,
+            numPlayers: 0,
             numRooms: 0,
             numExits: 0,
             exits:0,
@@ -214,8 +223,52 @@ contract Dungeon {
         require(_owners[itemHash] == address(0), "already claimed");
         _owners[itemHash] = to; // TODO erc721
     }
+
+    function attack(address sender, uint256 location) external withCorrectSender(sender) { // TODO multiplayer attack
+        actualiseBlock(stats.blockToActualise);
+        actualiseAttack(location);
+        Player storage player = players[sender];
+        require(player.location == location, "not in that room"); // TODO use hash and requir eplayer to provide data, instead of spending more gas by saving playerAddress
+        uint64 blockNumber = rooms[location].monsterBlockNumber;
+        require(blockNumber > 0, "no monster");
+        bytes32 blockHash = blockHashes[blockNumber];
+        bool hasMonster = uint256(keccak256(abi.encodePacked(location, blockHash, uint8(6)))) % 3 == 0; // TODO depends on type, etc..., depth
+        require(hasMonster, "no monster to attack");
+        rooms[location].attackBlockNumber = uint64(block.number);
+        stats.blockToActualise = uint64(block.number);
+    }
+
+    function escape(address sender, uint256 location) external withCorrectSender(sender) { // TODO multiplayer attack
+        // TODO location need to has been already discovered ?
+        // or the player need to be cming from there / or need to have visited in the past
+    }
+
+    function claimLoot(address sender, uint256 location) external withCorrectSender(sender) {
+        actualiseBlock(stats.blockToActualise);
+        Player storage player = players[sender];
+        require(player.location == location, "not in that room"); // TODO use hash and requir eplayer to provide data, instead of spending more gas by saving playerAddress
+        // bytes32 monsterBlockHash = blockHashes[rooms[location].monsterBlockNumber];
+        // bool hasMonster = uint256(keccak256(abi.encodePacked(location, monsterBlockHash, uint8(6)))) % 3 == 0; // TODO depends on type, etc..., depth
+        // require(hasMonster, "no monster to claim loot for");
+
+        actualiseAttack(location);
+        if(rooms[location].attackResult > 0) {
+            _mint(uint256(keccak256(abi.encodePacked(location, rooms[location].attackResult, uint8(9)))), sender); // TODO depends
+        }
+        rooms[location].attackResult = 0;
+    }
+
+    function actualiseAttack(uint256 location) internal {
+        bytes32 attackBlockHash = blockHashes[rooms[location].attackBlockNumber];
+        rooms[location].attackResult = uint256(keccak256(abi.encodePacked(location, attackBlockHash, uint8(8)))); // TODO depends on type, etc..., depth
+        // TODO attack logic + require monster to be dead (multiple turn attacks)
+        rooms[location].monsterBlockNumber = 0; // monster gone
+        rooms[location].attackBlockNumber = 0;
+    }
+
     function claimChest(address sender, uint256 location) external withCorrectSender(sender) {
         actualiseBlock(stats.blockToActualise);
+        // TODO !important enable this requirement require(rooms[location].monsterBlockNumber == 0, "monster still there");
         Player storage player = players[sender];
         require(player.location == location, "not in that room"); // TODO use hash and requir eplayer to provide data, instead of spending more gas by saving playerAddress
         actualiseRoom(location);
@@ -239,10 +292,8 @@ contract Dungeon {
             // }
             require(uint256(blockHash) > 0, "block not actualised");
             (uint8 exits, uint8 numExits) = generateExits(location, blockHash, room.numRooms, room.numExits);
-            
             room.kind = uint8(uint256(keccak256(abi.encodePacked(location, blockHash, uint8(3)))) % 2 + 1); // TODO ranomize for each access (probably making the entire 256 bit to a 256 bit state)
             room.exits = exits;
-            
             emit RoomActualised(location, blockHash, exits, room.kind, room.numRooms, room.numExits);
             uint8 closedExits = 0;
             if(rooms[location+1].kind > 0) {
@@ -290,11 +341,13 @@ contract Dungeon {
         Player storage player = players[sender];
         uint256 oldLocation = player.location;
         actualiseRoom(oldLocation);
-        Room memory currentRoom = rooms[oldLocation]; // storage?
+        // actualiseAttack(oldLocation); // do weneed that ? if we force claimLoo then we do not need
+        Room storage currentRoom = rooms[oldLocation];
+        currentRoom.numPlayers--;
         uint256 x = oldLocation % 2**128;
         uint256 y = oldLocation / 2**128;
         if(direction == 0) { // north
-            y--; 
+            y--;
         } else if(direction == 1) {
             x++;
         } else if(direction == 2) {
@@ -306,17 +359,25 @@ contract Dungeon {
         }
         uint256 newLocation = y * 2**128 + x;
         Room storage nextRoom = rooms[newLocation];
-        // TODO check if can move (fighting, waiting become fight)
+        nextRoom.numPlayers++;
+        // TODO !important enable this requirement require(currentRoom.monsterBlockNumber == 0, "monster still there");
         if( (currentRoom.exits & 2**direction) == 2**direction || (nextRoom.exits & 2**((direction +2)%4)) == 2**((direction +2)%4) ) {
             player.location = newLocation;
             if(nextRoom.blockNumber == 0) {
                 nextRoom.blockNumber = uint64(block.number);
+                nextRoom.monsterBlockNumber = uint64(block.number); // to indicate the monster is still there / loot
                 nextRoom.numRooms = stats.numRooms;
                 nextRoom.numExits = stats.numExits;
                 stats.blockToActualise = uint64(block.number);
                 emit RoomDiscovered(newLocation, uint64(block.number), nextRoom.numRooms, nextRoom.numExits);
             } else {
-                stats.blockToActualise = 0;
+                if(nextRoom.monsterBlockNumber == 0 && nextRoom.numPlayers == 0) {
+                    nextRoom.monsterBlockNumber = uint64(block.number);
+                    stats.blockToActualise = uint64(block.number);
+                    // TODO ? emit MonsterDiscovered(newLocation, uint64(block.number), nextRoom.numRooms, nextRoom.numExits);
+                } else {
+                    stats.blockToActualise = 0;
+                }
                 actualiseRoom(newLocation);
             }
             emit PlayerMoved(sender, oldLocation, newLocation);
@@ -334,13 +395,27 @@ contract Dungeon {
         inDungeon = player.inDungeon;
     }
 
-    function getRoom(uint256 location) external view returns(uint256 blockNumber, uint8 exits, uint8 kind, uint64 numRooms, uint32 numExits){
+    function getRoom(uint256 location) external view returns(
+        uint256 blockNumber,
+        uint8 exits,
+        uint8 kind,
+        uint64 numRooms,
+        uint32 numExits,
+        uint64 monsterBlockNumber,
+        uint64 attackBlockNumber,
+        uint256 attackResult,
+        uint64 numPlayers
+    ){
         Room storage room = rooms[location];
         exits = room.exits;
         kind = room.kind;
         blockNumber = room.blockNumber;
         numRooms = room.numRooms;
         numExits = room.numExits;
+        monsterBlockNumber = room.monsterBlockNumber;
+        attackBlockNumber = room.attackBlockNumber;
+        attackResult = room.attackResult;
+        numPlayers = room.numPlayers;
     }
 
     /////////////////////  DEBUG GETTERS //////////////// // TODO REMOVE
