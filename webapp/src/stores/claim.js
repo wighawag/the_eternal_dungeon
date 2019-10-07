@@ -88,11 +88,11 @@ const store = (() => {
                 
                 const claimBalance = await provider.getBalance(claimWallet.address);
                 log.trace({claimBalance});
-                if (claimBalance.gt(100000000000)) {
+                const gasPrice = await provider.getGasPrice();
+                const gasLimit = BigNumber.from(23000);
+                const gasFee = gasLimit.mul(gasPrice);
+                if (claimBalance.gt(gasFee)) {
                     const signer = claimWallet.connect(provider);
-                    const gasPrice = await provider.getGasPrice();
-                    const gasLimit = BigNumber.from(23000);
-                    const gasFee = gasLimit.mul(gasPrice);
                     let value = claimBalance.sub(gasFee);
                     const maxValue = BigNumber.from('1010000000000000000');
                     if (value.gt(maxValue)) {

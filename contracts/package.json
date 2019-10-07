@@ -10,7 +10,7 @@
   "dependencies": {
     "@parity/light.js": "^5.1.1",
     "bn.js": "^4.11.8",
-    "ethers": "^4.0.27",
+    "ethers": "^5.0.0-beta.158",
     "ganache-cli": "^6.4.1",
     "ganache-core": "^2.5.3",
     "geth-binary": "^0.1.3",

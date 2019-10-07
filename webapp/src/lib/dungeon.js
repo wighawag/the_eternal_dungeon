@@ -21,6 +21,8 @@ const Dungeon = function({ethersProvider, wallet, contract}, options) {
     this.callbacks = {};
     this.price = options.price || '1000000000000000000';
 
+    // console.log({price: this.price});
+
     this.provider = ethersProvider;
     this.wallet = wallet; // to perform tx on behalf of current user
     this.contract = new ethers.Contract(contract.address, contract.abi, this.provider);
@@ -260,6 +262,7 @@ Dungeon.prototype._startListening = async function() {
                 }
 
                 const playerData = await this.fetchPlayer(latestBlock);
+                console.log('PLAYERDAT', playerData);
                 if(playerData.location != this.playerLocation) {
                     newState.playerLocation = playerData.location;
                     log.info('PlayerMoved', newState.playerLocation);

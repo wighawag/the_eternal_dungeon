@@ -21,6 +21,7 @@ module.exports = async ({namedAccounts, isDeploymentChainId}) => {
     //     }
     // }
 
+    console.log('config minBalance', config.minBalance);
     await deploy("Dungeon",  {from: deployer, gas}, "Dungeon", dungeonOwner, config.minBalance); // TODO configure
 
     const dungeonContract = getDeployedContract('Dungeon');
