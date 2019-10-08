@@ -1,21 +1,33 @@
 export default [
-    [
-        'You decide it is time for you to continue, the entrance to the next room is ahead.\n You check up your gears and prepare yourself mentally for what\'s next'
-    ]
-    // [
-    //     "Ok, {direction} sounds like a plan, you check your gear andmove towards the exit...",
-    //     "As you move, your start to wonder what you ll find next.",
-    //     "Will there be new treasures?",
-    //     "Will there be new monsters?",
-    //     "Only one way to find out..."
-    // ],
-    // [
-    //     "That's a good choice", // if num choice > 1
-    //     "The exit looks like it has been used", // check room description
-    //     "As you approach the entrance to the next roon, you feel not sure about your choice anymore...", // if already known desctiption
-    // ],
-    // [
-    //     "Well, let's see...", // if num choice > 1
-    //     "You walk to see what's next, Will you find what you are looking for ?",
-    // ],
+["You hear a few whispers in the dark as you head deeper, but when you turn around, they vanish."],
+["The shadows swirl around you, but whether that’s your imagination or something else, you can’t tell."],
+["Turning the corner, a light breeze wafts around you, carrying the smells of a cooking fire somewhere in the distance."],
+["You almost tumble into the darkness: there are stairs here, cut into the rock. But who made these? And where do they lead?"],
+["Something light grabs at your face. You nearly scream, batting it away, but it’s nothing. A spiderweb. You take in a deep breath, and continue."],
+["Footsteps ring in the dark. You stop. They stop. You continue. They continue. You pray that it’s just an echo."],
+["Something skitters ahead of you. You shine a light: a small, blind grizzard flicks its tongue at you, then squeaks as it flitters away into a crack."],
+["The whole cavern seems to be pressing down around you. You force yourself to stop, close your eyes, and breathe. The feeling passes."],
+["You’re looking down when you should be looking up. You just manage to avoid a long, glistening tongue hanging from the ceiling. You sidestep it and hurry on your way."],
+["Eyes up, looking for batfolk and much else, you nearly step on a skeleton. You walk around it, but it’s skull turns to follow you. It doesn’t chase when you leave, however."],
+["The gravel underneath your feet crunches. You try to focus on that as your round the next bend, pushing nightmares out of your mind."],
+["You suddenly remember a scryer’s fortune foryou at a harvest festival, ages ago: that you would die underground. The words ring in your ears as you walk forward."],
+["“Go back.” You whirl around, sure that someone said it right behind you, but there’s nothing there. Hands shaking, you have no choice but to continue on."],
+["The walls seem to narrow. You almost turn back, but then catch a glimpse of light ahead. Shimmying, you manage to get through."],
+["You stop for a quick drink. No telling what the next room will hold. Best to be rested and prepared."],
+["Hunger rolls over you unexpectedly. You rest against the wall and take a bit of the mushrooms you gathered at the front of the cave."],
+["Some people say that the Ethernal is bottomless. But how would they know? How could they know?"],
+["Legends hold that the Ethernal is the last remnant of a long-dead civilization, gobbled up for openly defying the gods. Bad idea; it’s always best to keep your sins a secret."],
+["You remember the words of a fellow traveler, an elf, who heard you were heading to the Ethernal and gave you advice. He said, “Don’t.”"],
+["Runes flash in the darkness, blooming and fading as you walk past. You try to make them out, but they’re in a language you don’t understand. You continue walking, their secrets safe."],
+["The hall seems to be a crypt of some sort. There are alcoves lined with skeletons. A few are empty. Where are their former inhabitants? Ugh, you’ve got to stop asking yourself those kinds of questions."],
+["You come across a statue of a demonic being, offerings of gold at its feet. You reach out to take some, and the statue opens its eyes; “I wouldn’t do that if I were you.” You heed the advice and walk on."],
+["A library, or what was one, once. small, makeshift firepit is in the center. In the ashes, you can see the remnants of scrolls. Why would someone burn them? Not understanding the language, you have no choice but to keep walking."],
+["An altar stands in your way. Its marbled top is covered in fresh blood. You take a side passage rather than risk getting too close."],
+["Specks of nothingness flutter in a draft. You feel nothing, however, as you approach. The specks part, then reform, and for an instant, you think you hear a single word… “Help.”"],
+["You reach a ladder. Testing the wood slats, the entire thing collapses. Good thing you checked; it takes you ten minutes to climb down the rock face."],
+["A chief rolls over you. You rub your arms to keep warm."],
+["A blast of hot air wafts across the cavern floor. You search for the source: a small hole in the ground. You peer down, but there doesn’t seem to be anything below. You warm your hands and continue on."],
+["You walk down the hallway quickly. Best not to tarry."],
+["Slowing your pace, you make sure you’re taking your time to avoid any traps, physical or magical. Better to be safe."],
+["You come across a hole in the ground. You drop a stone down, but only silence greets you. Unnerved, you walk to the next room."]
 ];

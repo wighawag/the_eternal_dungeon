@@ -52,9 +52,11 @@
     },
     "first" : {
         "scene": {
-            "name": "The Test",
+            "name": "Arrival",
             "description": [
-                "The roosadasd"
+                "It’s dark when you arrive at the Ethernal. Gloom had set in hours before, and not just in terms of the weather. You knew the stories about this place: an ancient labyrinth cut into the valley floor, winding for hundreds of miles, if not more. Horrors haunted the passages: the remnants of a long-dead civilization that had passed on centuries before. What had caused it’s collapse? No one knew. Sounds like a bunch of scary stories to keep people away.",
+                "That’s because what people did know was what was left behind. Jewels. Gold. Magic scrolls. Ensorcelled weapons. Keep ‘em or sell ‘em: however you please! Most people did not come out when they entered the cave that you are now approaching, but those that did held enough wealth to set them up for life.",
+                "That’s why you’re here, carefully pacing down the darkened path. The forest has been silent for some time: a bad sign. Life should have continued right up until dusk. There’s a reason they have stayed away, but the reason you’ve come is stronger still. Get as much loot as you can, collect as many magical items as possible, and then get out. It wouldn’t do to become yet another death, not when there’s so much money left to spend."
             ],
             "scenes": [
                 {
